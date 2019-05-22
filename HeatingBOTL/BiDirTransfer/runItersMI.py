@@ -8,11 +8,11 @@ import subprocess
 # weightType = str(sys.argv[3])
 # cullThresh = float(sys.argv[4])
 def run():
-    startDates = {2000: "2014-01-01", 2001:"2015-01-01", 2002:"2014-09-01",2003:"2015-01-01",2004:"2014-01-01"}
-    endDates = {2000: "2015-03-31",2001:"2015-12-31",2002:"2015-03-30",2003:"2015-09-30",2004:"2015-06-30"}
-    subprocess.call(['python', 'controller.py',str('OLS'),str(1)])
-    subprocess.call(['python', 'controller.py',str('OLSFE'),str(2)])
-    subprocess.call(['python', 'controller.py',str('OLSFEMI'),str(3)])
+    startDates = {2000: "2014-01-01", 2001:"2015-01-01"}#, 2002:"2014-09-01",2003:"2015-01-01",2004:"2014-01-01"}
+    endDates = {2000: "2015-03-31",2001:"2015-12-31"}#,2002:"2015-03-30",2003:"2015-09-30",2004:"2015-06-30"}
+    # subprocess.call(['python3', 'controller.py',str('OLS'),str(1)])
+    subprocess.call(['python3', 'controller.py',str('OLSFE'),str(1)])
+    subprocess.call(['python3', 'controller.py',str('OLSFEMI'),str(7)])
     # controller.mainrun(startDates,endDates,'OLS')
     # startDates = {3000: "2014-01-01", 3001:"2015-01-01", 3002:"2014-09-01",3003:"2015-01-01",3004:"2014-01-01"}
     # endDates = {3000: "2015-03-31",3001:"2015-12-31",3002:"2015-03-30",3003:"2015-09-30",3004:"2015-06-30"}

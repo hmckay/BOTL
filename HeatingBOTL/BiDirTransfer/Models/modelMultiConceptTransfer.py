@@ -1,4 +1,4 @@
-from __future__ import division
+
 import pandas as pd
 import numpy as np
 from sklearn import metrics
@@ -20,7 +20,7 @@ def calcWeights(df,sourceModels,targetModel,tLabel,DROP_FIELDS,weightType):
         return calcOLSFEMIWeights(df,sourceModels,targetModel,tLabel,DROP_FIELDS)
     elif weightType == 'R2':
         return calcR2Weights(df,sourceModels,targetModel,tLabel,DROP_FIELDS)
-    print 'not the right metric'
+    print('not the right metric')
     return 0
 
 
@@ -32,7 +32,7 @@ def calcR2Weights(df,sourceModels,targetModel,tLabel,DROP_FIELDS):
     sourceP = dict()
     sourceR2 = dict()
     totalR2 = 0
-    for k,v in sourceModels.iteritems():
+    for k,v in sourceModels.items():
         sourceP[k] = np.round(sourceModels[k].predict(X),decimals=1)
         sourceR2[k] = metrics.r2_score(Y,sourceP[k])
         if sourceR2[k] <= 0:
@@ -53,9 +53,9 @@ def calcOLSWeights(df,sourceModels,targetModel,tLabel,DROP_FIELDS):
     X = df.drop(DROP_FIELDS,axis=1).copy()
     X = X.drop(tLabel,axis=1)
     Y = df[tLabel].copy()
-    metaX = pd.DataFrame(columns = sourceModels.keys())
+    metaX = pd.DataFrame(columns = list(sourceModels.keys()))
     #print X
-    for k,v in sourceModels.iteritems():
+    for k,v in sourceModels.items():
         pred = np.round(sourceModels[k].predict(X),decimals=1)
         metaX[k] = pred
     metaX['target'] = np.round(targetModel.predict(X),decimals=1)
@@ -69,7 +69,7 @@ def calcOLSWeights(df,sourceModels,targetModel,tLabel,DROP_FIELDS):
     #print sourceOLS
     targetOLS = sourceOLS['target']
     del sourceOLS['target']
-    totalOLS = targetOLS + sum(sourceOLS.itervalues())
+    totalOLS = targetOLS + sum(sourceOLS.values())
     weights = {'sourceR2s':sourceOLS,'targetR2':targetOLS, 'totalR2':totalOLS, 'metaModel': metaModel, 'metaXColumns': metaX.columns}
     #print weights
     return weights
@@ -78,10 +78,10 @@ def calcOLSFEWeights(df,sourceModels,targetModel,tLabel,DROP_FIELDS):
     X = df.drop(DROP_FIELDS,axis=1).copy()
     X = X.drop(tLabel,axis=1)
     Y = df[tLabel].copy()
-    metaX = pd.DataFrame(columns = sourceModels.keys())
+    metaX = pd.DataFrame(columns = list(sourceModels.keys()))
     dropKeys = []
     #print X
-    for k,v in sourceModels.iteritems():
+    for k,v in sourceModels.items():
         pred = np.round(sourceModels[k].predict(X),decimals=1)
         metaX[k] = pred
         r2 = metrics.r2_score(Y,pred)
@@ -104,7 +104,7 @@ def calcOLSFEWeights(df,sourceModels,targetModel,tLabel,DROP_FIELDS):
     #print sourceOLS
     targetOLS = sourceOLS['target']
     del sourceOLS['target']
-    totalOLS = targetOLS + sum(sourceOLS.itervalues())
+    totalOLS = targetOLS + sum(sourceOLS.values())
     weights = {'sourceR2s':sourceOLS,'targetR2':targetOLS, 'totalR2':totalOLS, 'metaModel': metaModel,'metaXColumns':metaX.columns}
     #print weights
     return weights
@@ -113,10 +113,10 @@ def calcOLSFEMIWeights(df,sourceModels,targetModel,tLabel,DROP_FIELDS):
     X = df.drop(DROP_FIELDS,axis=1).copy()
     X = X.drop(tLabel,axis=1)
     Y = df[tLabel].copy()
-    metaX = pd.DataFrame(columns = sourceModels.keys())
+    metaX = pd.DataFrame(columns = list(sourceModels.keys()))
     dropKeys = []
     #print X
-    for k,v in sourceModels.iteritems():
+    for k,v in sourceModels.items():
         pred = np.round(sourceModels[k].predict(X),decimals=1)
         metaX[k] = pred
         r2 = metrics.r2_score(Y,pred)
@@ -124,10 +124,10 @@ def calcOLSFEMIWeights(df,sourceModels,targetModel,tLabel,DROP_FIELDS):
             dropKeys.append(k)
     metaX['target'] = np.round(targetModel.predict(X),decimals=1)
     
-    for k,v in sourceModels.iteritems():
+    for k,v in sourceModels.items():
         if k in dropKeys:
             continue
-        for l,u in sourceModels.iteritems():
+        for l,u in sourceModels.items():
             if (l in dropKeys) or l==k:
                 continue
             predA = np.round(sourceModels[k].predict(X),decimals=1)
@@ -158,7 +158,7 @@ def calcOLSFEMIWeights(df,sourceModels,targetModel,tLabel,DROP_FIELDS):
     #print sourceOLS
     targetOLS = sourceOLS['target']
     del sourceOLS['target']
-    totalOLS = targetOLS + sum(sourceOLS.itervalues())
+    totalOLS = targetOLS + sum(sourceOLS.values())
     weights = {'sourceR2s':sourceOLS,'targetR2':targetOLS, 'totalR2':totalOLS, 'metaModel': metaModel,'metaXColumns':metaX.columns}
     #print weights
     return weights
@@ -172,7 +172,7 @@ def updateInitialWeights(df,sourceModels,tLabel,DROP_FIELDS,weightType):
         return updateInitialOLSFEMIWeights(df,sourceModels,tLabel,DROP_FIELDS)
     elif weightType == 'R2':
         return updateInitialR2Weights(df,sourceModels,tLabel,DROP_FIELDS)
-    print 'not the right metric'
+    print('not the right metric')
     return 0
 
 def updateInitialR2Weights(df,sourceModels,tLabel,DROP_FIELDS):
@@ -182,7 +182,7 @@ def updateInitialR2Weights(df,sourceModels,tLabel,DROP_FIELDS):
     
     sourceP = dict()
     sourceR2 = dict()
-    for k,v in sourceModels.iteritems():
+    for k,v in sourceModels.items():
         sourceP[k] = np.round(sourceModels[k].predict(X),decimals=1)
         sourceR2[k] = metrics.r2_score(Y,sourceP[k])
         if sourceR2[k] <= 0:
@@ -193,9 +193,9 @@ def updateInitialOLSWeights(df,sourceModels,tLabel,DROP_FIELDS):
     X = df.drop(DROP_FIELDS,axis=1).copy()
     X = X.drop(tLabel,axis=1)
     Y = df[tLabel].copy()
-    metaX = pd.DataFrame(columns = sourceModels.keys())
+    metaX = pd.DataFrame(columns = list(sourceModels.keys()))
     #print X
-    for k,v in sourceModels.iteritems():
+    for k,v in sourceModels.items():
         pred = np.round(sourceModels[k].predict(X),decimals=1)
         metaX[k] = pred
     #print metaX
@@ -216,9 +216,9 @@ def updateInitialOLSFEWeights(df,sourceModels,tLabel,DROP_FIELDS):
     X = df.drop(DROP_FIELDS,axis=1).copy()
     X = X.drop(tLabel,axis=1)
     Y = df[tLabel].copy()
-    metaX = pd.DataFrame(columns = sourceModels.keys())
+    metaX = pd.DataFrame(columns = list(sourceModels.keys()))
     dropKeys = dict()
-    for k,v in sourceModels.iteritems():
+    for k,v in sourceModels.items():
         #pred = np.round(sourceModels[k].predict(X),decimals=3)
         pred = np.round(sourceModels[k].predict(X),decimals=1)
         metaX[k] = pred
@@ -226,14 +226,14 @@ def updateInitialOLSFEWeights(df,sourceModels,tLabel,DROP_FIELDS):
         if r2 <= 0:
             dropKeys[k] = r2
     #print metaX
-    if len(dropKeys.keys()) == len(metaX.columns):
+    if len(list(dropKeys.keys())) == len(metaX.columns):
         for i in range(0,3):
-            if len(dropKeys.keys())>0:
-                maxKey = max(dropKeys.iteritems(),key=operator.itemgetter(1))[0]
+            if len(list(dropKeys.keys()))>0:
+                maxKey = max(iter(dropKeys.items()),key=operator.itemgetter(1))[0]
                 del dropKeys[maxKey]
     
-    if len(dropKeys.keys()) > 0 and len(dropKeys.keys()) < len(metaX.columns):
-        metaX = metaX.drop(dropKeys.keys(),axis=1)
+    if len(list(dropKeys.keys())) > 0 and len(list(dropKeys.keys())) < len(metaX.columns):
+        metaX = metaX.drop(list(dropKeys.keys()),axis=1)
     
     metaModel = OLS()
     metaModel.fit(metaX,Y)
@@ -253,9 +253,9 @@ def updateInitialOLSFEMIWeights(df,sourceModels,tLabel,DROP_FIELDS):
     X = df.drop(DROP_FIELDS,axis=1).copy()
     X = X.drop(tLabel,axis=1)
     Y = df[tLabel].copy()
-    metaX = pd.DataFrame(columns = sourceModels.keys())
+    metaX = pd.DataFrame(columns = list(sourceModels.keys()))
     dropKeys = dict()
-    for k,v in sourceModels.iteritems():
+    for k,v in sourceModels.items():
         #pred = np.round(sourceModels[k].predict(X),decimals=3)
         pred = np.round(sourceModels[k].predict(X),decimals=1)
         metaX[k] = pred
@@ -263,11 +263,11 @@ def updateInitialOLSFEMIWeights(df,sourceModels,tLabel,DROP_FIELDS):
         if r2 <= CULLTHRESH:
             dropKeys[k] = r2
     #print metaX
-    for k,v in sourceModels.iteritems():
-        if k in dropKeys.keys():
+    for k,v in sourceModels.items():
+        if k in list(dropKeys.keys()):
             continue
-        for l,u in sourceModels.iteritems():
-            if (l in dropKeys.keys()) or l==k:
+        for l,u in sourceModels.items():
+            if (l in list(dropKeys.keys())) or l==k:
                 continue
             predA = np.round(sourceModels[k].predict(X),decimals=1)
             predB = np.round(sourceModels[l].predict(X),decimals=1)
@@ -281,14 +281,14 @@ def updateInitialOLSFEMIWeights(df,sourceModels,tLabel,DROP_FIELDS):
                 else:
                     dropKeys[k] = r2A
 
-    if len(dropKeys.keys()) == len(metaX.columns):
+    if len(list(dropKeys.keys())) == len(metaX.columns):
         for i in range(0,3):
-            if len(dropKeys.keys())>0:
-                maxKey = max(dropKeys.iteritems(),key=operator.itemgetter(1))[0]
+            if len(list(dropKeys.keys()))>0:
+                maxKey = max(iter(dropKeys.items()),key=operator.itemgetter(1))[0]
                 del dropKeys[maxKey]
     
-    if len(dropKeys.keys()) > 0 and len(dropKeys.keys()) < len(metaX.columns):
-        metaX = metaX.drop(dropKeys.keys(),axis=1)
+    if len(list(dropKeys.keys())) > 0 and len(list(dropKeys.keys())) < len(metaX.columns):
+        metaX = metaX.drop(list(dropKeys.keys()),axis=1)
     
     metaModel = OLS()
     metaModel.fit(metaX,Y)
@@ -316,7 +316,7 @@ def instancePredict(df,idx,sourceModels,targetModel,weights,tLabel,DROP_FIELDS,w
     combo = 0
     if weightType == 'OLS' or weightType =='OLSFE' or weightType == 'OLSFEMI':
         metaX = pd.DataFrame(columns=weights['metaXColumns'])
-    for k,v in sourceModels.iteritems():
+    for k,v in sourceModels.items():
         sourceP = np.round(sourceModels[k].predict(X),decimals=1)
         if weightType == 'OLS' or weightType == 'OLSFE' or weightType == 'OLSFEMI':
             if k in metaX.columns:
@@ -339,7 +339,7 @@ def instancePredict(df,idx,sourceModels,targetModel,weights,tLabel,DROP_FIELDS,w
     return df.loc[idx]
 
 def getEvenWeights(df,sourceModels,tLabel,DROP_FIELDS):
-    metaX = pd.DataFrame(columns = sourceModels.keys())
+    metaX = pd.DataFrame(columns = list(sourceModels.keys()))
     sourceOLS = dict()
     for feat in metaX.columns:
         sourceOLS[feat] = 1/len(metaX.columns)
@@ -365,10 +365,10 @@ def initialInstancePredict(df,idx,sourceModels,weights,tLabel,DROP_FIELDS,weight
 
         if not weightType =='Even':
             metaX = pd.DataFrame(columns=weights['metaXColumns'])
-    for k,v in sourceModels.iteritems():
+    for k,v in sourceModels.items():
         sourceP = np.round(sourceModels[k].predict(X),decimals=1)
         if weightType == 'OLS' or weightType == 'OLSFE' or weightType == 'OLSFEMI':
-            print "index is : "+str(idx)
+            print("index is : "+str(idx))
             if k in metaX.columns:
                 metaX[k] = sourceP
         else:

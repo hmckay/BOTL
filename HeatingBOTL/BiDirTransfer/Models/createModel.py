@@ -7,13 +7,14 @@ from sklearn.kernel_approximation import RBFSampler as RBF
 from sklearn.pipeline import Pipeline
 
 def createPipeline(df,tLabel,DROP_FIELDS):
-    transformer = RBF(gamma = 0.001, n_components = 300, random_state=1)
-    #transformer = RBF(gamma = 0.1, n_components = 300, random_state=1)
-    #model = SGD(loss='squared_epsilon_insensitive',penalty='l2',alpha=0.001,n_iter=800,epsilon=0.001,learning_rate ='invscaling',warm_start=False,shuffle=True)
-    sgd = SGD(loss='squared_epsilon_insensitive',penalty='l2',alpha=0.001,n_iter=1500,epsilon=0.001,learning_rate ='invscaling',warm_start=False,shuffle=False)
-    components = [('transformer',transformer),('sgd',sgd)]
-    model = Pipeline(components)
+    # transformer = RBF(gamma = 0.001, n_components = 300, random_state=1)
+    # #transformer = RBF(gamma = 0.1, n_components = 300, random_state=1)
+    # #model = SGD(loss='squared_epsilon_insensitive',penalty='l2',alpha=0.001,n_iter=800,epsilon=0.001,learning_rate ='invscaling',warm_start=False,shuffle=True)
+    # sgd = SGD(loss='squared_epsilon_insensitive',penalty='l2',alpha=0.001,n_iter=1500,epsilon=0.001,learning_rate ='invscaling',warm_start=False,shuffle=False)
+    # components = [('transformer',transformer),('sgd',sgd)]
+    # model = Pipeline(components)
     #model = LR()
+    model = SVR(kernel = 'rbf',epsilon=0.001,gamma=0.001,C=5,tol=0.000001,max_iter=800)
     #model = SVR(kernel='poly',epsilon=0.001,max_iter=800)
     #print "model created over: "
     #print df

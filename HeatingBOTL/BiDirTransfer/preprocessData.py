@@ -14,12 +14,12 @@ def pullData(fp):
     return allData
 
 def subsetData(df,dFrom,dTo):
-    mask = (df['date']>=dFrom) & (df['date'] <= dTo)
+    mask = (df['date']>=pd.Timestamp(dFrom)) & (df['date'] <= pd.Timestamp(dTo))
     subsetDF = df.loc[mask].copy()
     return subsetDF
 
 def getWindowLength(df,dFrom,dTo):
-    mask = (df['date']>=dFrom) & (df['date'] < dTo)
+    mask = (df['date']>=pd.Timestamp(dFrom)) & (df['date'] < pd.Timestamp(dTo))
     subsetDF = df.loc[mask].copy()
     return len(subsetDF)
 
