@@ -1,4 +1,4 @@
-from __future__ import division
+
 import sys
 import numpy as np
 import pandas as pd
@@ -18,15 +18,15 @@ from scipy.stats import pearsonr
 
 
 
-DROP_FIELDS = ['Time']
-tLabel='FollowingTime'#'FutureTimeDelta'
+DROP_FIELDS = ['Time','predictions']
+tLabel='FollowingTime'
 
-INIT_DAYS = 0#14
-MODEL_HIST_THRESHOLD_ACC = 0#.6
-MODEL_HIST_THRESHOLD_PROB = 0#.66
-STABLE_SIZE = 0#14
-MAX_WINDOW = 0#14
-THRESHOLD = 0#.65
+INIT_DAYS = 0
+MODEL_HIST_THRESHOLD_ACC = 0
+MODEL_HIST_THRESHOLD_PROB = 0
+STABLE_SIZE = 0
+MAX_WINDOW = 0
+THRESHOLD = 0
 PORT = 0
 SIM_FROM = 0
 SIM_TO = 0
@@ -42,7 +42,6 @@ UID = ''
 
 
 def calcError(y,preds):
-    #return metrics.mean_absolute_error(y,preds)
     return metrics.r2_score(y,preds)
 
 def modelReadyToSend(modelID,model,s):
@@ -50,26 +49,26 @@ def modelReadyToSend(modelID,model,s):
     if modelID not in modelsSent:
         successFlag = handshake(modelID,model,s)
     else:
-        print "model already sent"
+        print("model already sent")
         return 1
 
     if successFlag:
         modelsSent.append(modelID)
-        print "sucessfully sent model"
+        print("sucessfully sent model")
         return 1
     else:
-        print "unsucessful send"
+        print("unsucessful send")
         return 0
 
 def handshake(modelID,model,s):
-    print modelID
+    print(modelID)
     modelToSend = pickle.dumps(model)
     lenofModel = len(modelToSend)
     brokenBytes = [modelToSend[i:i+1024] for i in range(0,len(modelToSend),1024)]
     numPackets = len(brokenBytes)
     RTSmsg = 'RTS,'+str(modelID)+','+str(numPackets)+','+str(lenofModel)
-    s.sendall(RTSmsg)
-    ack = s.recv(1024)
+    s.sendall(RTSmsg.encode())
+    ack = s.recv(1024).decode()
     ackNumPackets = int(ack.split(',')[1])
 
     if ackNumPackets == numPackets:
@@ -79,56 +78,49 @@ def handshake(modelID,model,s):
 def sendModel(modelID,brokenBytes,s):
     for i in brokenBytes:
         s.sendall(i)
-        print "finished sending"
-    recACK = s.recv(1024)
+        print("finished sending")
+    recACK = s.recv(1024).decode()
     if modelID == int(recACK.split(',')[1]):
         return 1
     return 0
 
 def readyToReceive(s,sourceModels):
-    s.sendall('RTR,'+str(ID))
-    data = s.recv(1024)
-    print "TARGET: num models to receive "+repr(data)
+    s.sendall(('RTR,'+str(ID)).encode())
+    data = s.recv(1024).decode()
+    print("TARGET: num models to receive "+repr(data))
     ACKFlag = data.split(',')[0]
     numModels = int(data.split(',')[1])
-    print "ready to recieve function called"
+    print("ready to recieve function called")
     if ACKFlag == 'ACK':
         if numModels == 0:
-            s.sendall('END')
+            s.sendall(('END').encode())
             return sourceModels
-        s.sendall('ACK')
+        s.sendall(('ACK').encode())
         for i in range(0,numModels):
             sourceModels = receiveModels(s,sourceModels)
     return sourceModels
 
 def receiveModels(s,sourceModels):
-    RTSInfo = s.recv(1024)
+    RTSInfo = s.recv(1024).decode()
     RTSFlag = RTSInfo.split(',')[0]
     sourceModID = RTSInfo.split(',')[1]
     numPackets = int(RTSInfo.split(',')[2])
     lenofModel = int(RTSInfo.split(',')[3])
-    print "NUMBER OF PACKETS EXPECTING: "+str(numPackets)
-    s.sendall('ACK,'+str(numPackets))
+    print("NUMBER OF PACKETS EXPECTING: "+str(numPackets))
+    s.sendall(('ACK,'+str(numPackets)).encode())
     
-    pickledModel = ""
-    newsection = ""
-    # for i in range(0,numPackets):
-        # newsection = s.recv(1024)
-        # print "length of pickle of seg "+str(i)+": "+str(len(newsection))
-        # print newsection
-        # pickledModel = pickledModel + newsection
-    # print "length of final pickle seg: "+str(len(newsection))
+    pickledModel = b''
     while (len(pickledModel) < lenofModel):
         pickledModel = pickledModel+s.recv(1024)
-    s.sendall('ACK,'+str(sourceModID))
+    s.sendall(('ACK,'+str(sourceModID)).encode())
 
     return storeSourceModel(sourceModID,pickledModel,sourceModels)
 
 def storeSourceModel(sourceModID,pickledModel,sourceModels):
-    print "picked model len is: "+str(len(pickledModel))
+    print("picked model len is: "+str(len(pickledModel)))
     model = pickle.loads(pickledModel)
     sourceModels[sourceModID] = model
-    print model
+    print(model)
     return sourceModels
 
 
@@ -143,8 +135,8 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
     weights = dict()
     for m in sourceModels:
         weight[m] = 1.0/len(sourceModels)
-    print "initial weights:"
-    print weight
+    print("initial weights:")
+    print(weight)
     weights['sourceR2s']=weight
     weights['totalR2']=len(sourceModels)
     multiWeights.append(weights)
@@ -160,24 +152,23 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
     conceptSize = 0
     ofUse = 0
     sentFlag = 0
-    window = pd.DataFrame(columns = df.columns)# ['date','time','oTemp','rain','dTemp','heatingOn','year','month','day','dayOfWeek','predictions'])
-    historyData = pd.DataFrame(columns = df.columns)# ['date','time','oTemp','rain','dTemp','heatingOn','year','month','day','dayOfWeek','predictions'])
-    startDate = df.index.min()+INIT_DAYS+1
-    startDoW = df.index.min()%20#,'dayOfWeek']
+    window = pd.DataFrame(columns = df.columns)
+    historyData = pd.DataFrame(columns = df.columns)
+    startIDX = df.index.min()+INIT_DAYS+1
+    startDoW = df.index.min()%20
 
     modelStart = []
-    modelStart.append(startDate)
-    p = pd.DataFrame(columns = df.columns)#['date','time','oTemp','rain','dTemp','heatingOn','year','month','day','dayOfWeek','predictions'])
+    modelStart.append(startIDX)
+    p = pd.DataFrame(columns = df.columns)
 
     for idx in df.index:
-        #print idx
         conceptSize+=1
         if idx%75 == startDoW and storeFlag == False:
             storeFlag = True
             week += 1
         
         if ofUse >= STABLE_SIZE and not sentFlag:
-            print "trying to send "+str(modelID)
+            print("trying to send "+str(modelID))
             sentFlag = modelReadyToSend(modelID,targetModel,s)
         
         #first window of data
@@ -186,7 +177,6 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
                 weight = modelMulti.updateInitialWeights(historyData,sourceModels,tLabel,
                         DROP_FIELDS,weightType,CULLTHRESH,MITHRESH)
             if not sourceModels:
-                #print "prediction is 0.5"
                 prediction = modelMulti.defaultInstancePredict(df,idx)
                 targetPred = prediction
             else:
@@ -201,7 +191,7 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
                     numModels = 0
                 else:
                     modelWeights = weights['sourceR2s']
-                    numModels = sum(1 for val in modelWeights.values() if val != 0)
+                    numModels = sum(1 for val in list(modelWeights.values()) if val != 0)
                     numModelsUsed.append(numModels)
 
 
@@ -219,26 +209,22 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
             if (weightType != 'OLS' and weightType != 'OLSFE' and weightType != 'Ridge' and 
                     weightType != 'NNLS' and weightType != 'OLSFEMI'):
                 weights['sourceR2s']=weight
-                weights['totalR2']=sum(weight.itervalues())
+                weights['totalR2']=sum(weight.values())
             else: 
                 weights = weight
-            #weights['sourceR2s']=weight
-            #weights['totalR2']=sum(weight.itervalues())
             multiWeights.append(weights)
             #print "building first target model"
             buildTMod = True
-            print "building target model: "+str(idx)
+            print("building target model: "+str(idx))
             #receive models from controller
             sourceModels = readyToReceive(s,sourceModels)
             targetModel = createModel.createPipeline(historyData,tLabel,DROP_FIELDS)
-            #might not want this - wait for it to be used for stable size
-            #modelReadyToSend(modelID,targetModel,s)
 
             weights = modelMulti.calcWeights(historyData,sourceModels,targetModel,tLabel,
                     DROP_FIELDS,weightType,CULLTHRESH,MITHRESH)
             if weightType == 'OLSFE' or weightType =='OLS' or weightType == 'OLSFEMI':
                 modelWeights = weights['sourceR2s']
-                numModels = sum(1 for val in modelWeights.values() if val != 0)
+                numModels = sum(1 for val in list(modelWeights.values()) if val != 0)
                 numModelsUsed.append(numModels)
             # if weightType == 'OLSFE' or weightType =='OLS':
             #    # resultFile = open('performanceVsCost3'+str(ID)+str(weightType)+'.csv','a')
@@ -247,21 +233,20 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
             #    # numModels = sum(1 for val in modelWeights.values() if val != 0)
             #    # resultFile.write(str(idx)+','+str(wErr)+','+str(numModels+1)+'\n')
             #    # resultFile.close()
-            print "first prediction with target model: "+str(idx)
+            print("first prediction with target model: "+str(idx))
             targetPred = createModel.instancePredict(df,idx,targetModel,tLabel,DROP_FIELDS)
             prediction = modelMulti.instancePredict(df,idx,sourceModels,targetModel,weights,tLabel,DROP_FIELDS,weightType)
             
             historyData = historyData.append(prediction)
             p = p.append(targetPred)
-            #window = p.copy()
             
             #calculate ensemble weights - return dict
 
-            print "first alpha value is: " +str(weights)
+            print("first alpha value is: " +str(weights))
 
             ##########CREATE NEW HISTORY FOR ENSEMBLE WEIGHTS
             existingModels,transitionMatrix,modelID,modelOrder = modelMultiHistory.newHistory(MODEL_HIST_THRESHOLD_ACC,
-                    MODEL_HIST_THRESHOLD_PROB,STABLE_SIZE,sourceModels,targetModel,startDate)
+                    MODEL_HIST_THRESHOLD_PROB,STABLE_SIZE,sourceModels,targetModel,startIDX)
             drifts[modelCount] = week
             modelCount = 1
             
@@ -269,13 +254,12 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
         else:
             if idx%25 == 0 and (weightType == 'OLS' or weightType == 'OLSFE' or 
                     weightType == 'OLSFEMI' or weightType == 'Ridge'):
-                # weights = modelMulti.calcWeights(window,sourceModels,targetModel,tLabel,DROP_FIELDS,weightType)
                 weights = modelMulti.calcWeights(historyData[(-1*STABLE_SIZE):],sourceModels,
                         targetModel,tLabel,DROP_FIELDS,weightType,CULLTHRESH,MITHRESH)
             ofUse += 1
             if weightType == 'OLSFE' or weightType =='OLS' or weightType == 'OLSFEMI':
                 modelWeights = weights['sourceR2s']
-                numModels = sum(1 for val in modelWeights.values() if val != 0)
+                numModels = sum(1 for val in list(modelWeights.values()) if val != 0)
                 numModelsUsed.append(numModels)
             # if weightType == 'OLSFE' or weightType =='OLS':
             #    # resultFile = open('performanceVsCost3'+str(ID)+str(weightType)+'.csv','a')
@@ -293,7 +277,7 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
             targetPred = createModel.instancePredict(df,idx,targetModel,tLabel,DROP_FIELDS)
             p = p.append(targetPred) 
             if idx%50 == 0:
-                print idx, weights
+                print(idx, weights)
             diff = abs(targetPred['predictions']-targetPred[tLabel])
 
             if diff >0.1 and windowSize ==0:
@@ -307,9 +291,8 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
                     if err < THRESHOLD:
                         lastModID = modelID
                         modelCount+=1
-                        #print startDate
-                        startDate = idx#window.loc[idx,'date'].date()
-                        modelStart.append(startDate)
+                        startIDX = idx
+                        modelStart.append(startIDX)
                         conceptSize = len(window)
                     
                         partial = window.copy()
@@ -322,14 +305,12 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
                         #CALC ENSEMBLE WEIGHT
                         sourceModels=readyToReceive(s,sourceModels)
                         modelID, existingModels,transitionMatrix,modelOrder,targetModel = modelMultiHistory.nextModels(existingModels,transitionMatrix, 
-                                modelOrder,partial,modelID,tLabel,DROP_FIELDS,startDate,False)
+                                modelOrder,partial,modelID,tLabel,DROP_FIELDS,startIDX,False)
                         # send to controller
                         ofUse = 0
                         sentFlag = 0
                         weights = modelMulti.calcWeights(window,sourceModels,targetModel,tLabel,
                                 DROP_FIELDS,weightType,CULLTHRESH,MITHRESH)
-                        #weights = modelMulti.calcWeights(historyData[-150:],sourceModels,targetModel,tLabel,DROP_FIELDS,weightType)
-                        #window = modelMulti.initialPredict(window,sourceModels,targetModel,weights,tLabel,DROP_FIELDS,weightType)
                         window = createModel.initialPredict(window,targetModel,tLabel,DROP_FIELDS)
                         if lastModID < modelID:
                             drifts[modelCount] = week
@@ -351,23 +332,23 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
             for k in weights['sourceR2s']:
                 w[k] = weights['sourceR2s'][k]/weights['totalR2']
             multiWeights.append(w)
-    endDate = historyData.index.max()
-    modelOrder,existingModels = modelMultiHistory.updateLastModelUsage(modelOrder,existingModels,endDate)
-    print "number concepts: "+str(modelCount)
-    print modelStart
-    print modelOrder
-    print existingModels
-    print transitionMatrix
+    endIDX = historyData.index.max()
+    modelOrder,existingModels = modelMultiHistory.updateLastModelUsage(modelOrder,existingModels,endIDX)
+    print("number concepts: "+str(modelCount))
+    print(modelStart)
+    print(modelOrder)
+    print(existingModels)
+    print(transitionMatrix)
     mse = metrics.mean_squared_error(historyData[tLabel],historyData['predictions'])
-    print mse
-    print calcError(historyData[tLabel],historyData['predictions'])
+    print(mse)
+    print(calcError(historyData[tLabel],historyData['predictions']))
     w = dict()
     for k in weights['sourceR2s']:
         w[k] = weights['sourceR2s'][k]/weights['totalR2']
     multiWeights.append(w)
-    print "all weights are:"
-    print multiWeights
-    print metrics.r2_score(p[tLabel],p['predictions'])
+    print("all weights are:")
+    print(multiWeights)
+    print(metrics.r2_score(p[tLabel],p['predictions']))
 
 
     return historyData,modelStart,existingModels,transitionMatrix,modelOrder,drifts,multiWeights,p,numModelsUsed
@@ -378,18 +359,9 @@ def simTarget(weightType,s):
     sourceModels = dict()
     sourceModels = readyToReceive(s,sourceModels)
 
-    '''
-    if not sourceModels:
-        #no sourceModels then have to wait to get data
-        historyData,futureData,model = initiate(df,tLabel,SIM_FROM,DROP_FIELDS)
-        startIDx = futureData.index.min()
-        startDate = startIDx#futureData.loc[startIDx,'date'].date()
-        existingModels,transitionMatrix,modelID,modelOrder = modelHistory.newHistory(MODEL_HIST_THRESHOLD_ACC,MODEL_HIST_THRESHOLD_PROB,STABLE_SIZE,model,startDate)
-        modelReadyToSend(modelID,model,s)
-    '''
     #get models from controller
-    print "source Models:"
-    print sourceModels
+    print("source Models:")
+    print(sourceModels)
     df = preprocess.pullData(FP)
     df = preprocess.subsetData(df,SIM_FROM,SIM_TO)
     df['predictions'] = np.nan
@@ -397,11 +369,11 @@ def simTarget(weightType,s):
     historyData,modelStart,existingModels,transitionMatrix,modelOrder,drifts,multiWeights,p,numModelsUsed = runRePro(df,sourceModels,tLabel,weightType,s)
     numModelsUsedArr = np.array(numModelsUsed)
     meanNumModels = numModelsUsedArr.mean()
-    print "model hist acc: "+str(MODEL_HIST_THRESHOLD_ACC)
-    print "model hist prob: "+str(MODEL_HIST_THRESHOLD_PROB)
-    print "stablesixe: "+str(STABLE_SIZE)
-    print " maxwindow: "+str(MAX_WINDOW)
-    print "threshold: "+str(THRESHOLD)
+    print("model hist acc: "+str(MODEL_HIST_THRESHOLD_ACC))
+    print("model hist prob: "+str(MODEL_HIST_THRESHOLD_PROB))
+    print("stablesixe: "+str(STABLE_SIZE))
+    print(" maxwindow: "+str(MAX_WINDOW))
+    print("threshold: "+str(THRESHOLD))
     if WEIGHTTYPE == 'OLS':
         fileWeight = 'OLS'
     elif WEIGHTTYPE == 'OLSFEMI':
@@ -476,17 +448,17 @@ def main():
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((HOST,PORT))
-    s.sendall(ID)
-    print "connection established"
-    print ID, PORT, SIM_FROM, SIM_TO, FP, INIT_DAYS, MODEL_HIST_THRESHOLD_ACC, MODEL_HIST_THRESHOLD_PROB, STABLE_SIZE, MAX_WINDOW, THRESHOLD
-    print "model hist acc: "+str(MODEL_HIST_THRESHOLD_ACC)
-    print "model hist prob: "+str(MODEL_HIST_THRESHOLD_PROB)
-    print "stablesixe: "+str(STABLE_SIZE)
-    print " maxwindow: "+str(MAX_WINDOW)
-    print "threshold: "+str(THRESHOLD)
+    s.sendall(ID.encode())
+    print("connection established")
+    print(ID, PORT, SIM_FROM, SIM_TO, FP, INIT_DAYS, MODEL_HIST_THRESHOLD_ACC, MODEL_HIST_THRESHOLD_PROB, STABLE_SIZE, MAX_WINDOW, THRESHOLD)
+    print("model hist acc: "+str(MODEL_HIST_THRESHOLD_ACC))
+    print("model hist prob: "+str(MODEL_HIST_THRESHOLD_PROB))
+    print("stablesixe: "+str(STABLE_SIZE))
+    print(" maxwindow: "+str(MAX_WINDOW))
+    print("threshold: "+str(THRESHOLD))
 
-    ack = s.recv(1024)
-    print repr(ack)
+    ack = s.recv(1024).decode()
+    print(repr(ack))
     simTarget(weightType,s)
 
     s.close()
