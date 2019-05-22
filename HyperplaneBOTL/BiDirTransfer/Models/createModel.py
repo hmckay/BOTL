@@ -10,11 +10,11 @@ def createPipeline(df,tLabel,DROP_FIELDS):
     #transformer = RBF(gamma = 0.001, n_components = 300, random_state=1)
     #transformer = RBF(gamma = 0.1, n_components = 300, random_state=1)
     #model = SGD(loss='squared_epsilon_insensitive',penalty='l2',alpha=0.001,n_iter=800,epsilon=0.001,learning_rate ='invscaling',warm_start=False,shuffle=True)
-    model = SGD(loss='squared_epsilon_insensitive',penalty='l2',alpha=0.001,n_iter=1500,epsilon=0.001,learning_rate ='invscaling',warm_start=False,shuffle=False)
+    #model = SGD(loss='squared_epsilon_insensitive',penalty='l2',alpha=0.001,n_iter=1500,epsilon=0.001,learning_rate ='invscaling',warm_start=False,shuffle=False)
     #components = [('transformer',transformer),('sgd',sgd)]
     #model = Pipeline(components)
     #model = LR()
-    #model = SVR(kernel='poly',epsilon=0.001,max_iter=800)
+    model = SVR(kernel='linear',epsilon=0.001,tol=0.0001)
     #print "model created over: "
     #print df
     X = df.drop(DROP_FIELDS,axis=1).copy()

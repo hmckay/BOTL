@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import operator
-import createModel
+from . import createModel
 import datetime as dt
 from sklearn.linear_model import SGDRegressor as SGD
 from sklearn.kernel_approximation import RBFSampler as RBF
@@ -37,13 +37,13 @@ def newHistory(acc,prob,stable,sourceModels,targetModel,startDate):
     return existingModels,transitionMatrix,1,modelOrder
 
 def getStableModels(existingModels):
-    stable = dict((k,v) for k,v in existingModels.iteritems() if v['daysOfUse']>=STABLE_THRESHOLD)
+    stable = dict((k,v) for k,v in existingModels.items() if v['daysOfUse']>=STABLE_THRESHOLD)
     #print stable
     return stable
 
 def addSourceModel(newModels):
     global SOURCE_MODELS
-    for modID,mod in newMod.iteritems():
+    for modID,mod in newMod.items():
         SOURCE_MODELS[modID] = mod
     return SOURCE_MODELS
 
@@ -62,7 +62,7 @@ def addNewModel(existingModels,transitionMatrix,targetModel,prevModID,initTM):
     return newID,existingModels,transitionMatrix
 
 def addRepeatModel(transitionMatrix,newModID,prevModID):
-    if transitionMatrix[prevModID].has_key(newModID):
+    if newModID in transitionMatrix[prevModID]:
         transitionMatrix[prevModID][newModID] += 1
     else:
         transitionMatrix[prevModID][newModID] = 1
@@ -127,7 +127,7 @@ def updateModelUsage(modelOrder,currentModID,existingModels,transitionMatrix,sta
     if dayDiff < STABLE_THRESHOLD and len(modelOrder)>1:
         falseFrom = modelOrder[-2]['modelID']
         falseTo = modelOrder[-1]['modelID']
-        if transitionMatrix[falseFrom].has_key(falseTo):
+        if falseTo in transitionMatrix[falseFrom]:
             if transitionMatrix[falseFrom][falseTo]>0:
                 transitionMatrix[falseFrom][falseTo] -= 1
     back = -1
@@ -173,10 +173,10 @@ def nextModels(existingModels,transitionMatrix,modelOrder,DF,currentModID,tLabel
         modelOrder.append(orderDetails)
         return nextModel,existingModels,transitionMatrix,modelOrder,existingModels[nextModel]['targetModel']
 
-    successors.update((x,y/total) for x,y in successors.items())
-    max_val = max(successors.iteritems(),key=operator.itemgetter(1))[1]
+    successors.update((x,y/total) for x,y in list(successors.items()))
+    max_val = max(iter(successors.items()),key=operator.itemgetter(1))[1]
     nextModels = []
-    nextModels = [k for k, v in successors.iteritems() if v == max_val and max_val >= PROB_THRESHOLD]
+    nextModels = [k for k, v in successors.items() if v == max_val and max_val >= PROB_THRESHOLD]
 
     #print "next models: " + str(nextModels)
     nextModel = 0

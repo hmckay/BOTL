@@ -7,9 +7,9 @@ import subprocess
 # weightType = str(sys.argv[3])
 # cullThresh = float(sys.argv[4])
 def run(ident,driftType,offset):
-    subprocess.call(['python', 'controller.py',str(ident),str(driftType),str(offset),str('OLS')])
-    subprocess.call(['python', 'controller.py',str(ident),str(driftType),str(offset+300),str('OLSFE')])
-    subprocess.call(['python', 'controller.py',str(ident),str(driftType),str(offset+600),str('OLSFEMI')])
+    subprocess.call(['python3', 'controller.py',str(ident),str(driftType),str(offset),str('OLS')])
+    subprocess.call(['python3', 'controller.py',str(ident),str(driftType),str(offset+300),str('OLSFE')])
+    subprocess.call(['python3', 'controller.py',str(ident),str(driftType),str(offset+600),str('OLSFEMI')])
     #controller.mainrun(sourceFPs,'OLSFE')
     #controller.mainrun(sourceFPs,'OLSFEMI')
 
@@ -20,7 +20,7 @@ def getFPs(ident,driftType,offset):
     froms = dict()
     for i in range(1,6):
         s[(i+offset)]='TARGET'+str(i)+str(driftType)+str(ident+1)
-        FPs[(i+offset)]='../../HyperplaneData/KDDDatasets/Datastreams/TARGET'+str(i)+'MultiConcept'+str(driftType)+str(ident+1)+'.csv'
+        FPs[(i+offset)]='../../HyperplaneDG/Data/Datastreams/TARGET'+str(i)+'MultiConcept'+str(driftType)+str(ident+1)+'.csv'
         froms[(i+offset)]=1
         if driftType == 'Sudden':
             tos[(i+offset)]=10000
