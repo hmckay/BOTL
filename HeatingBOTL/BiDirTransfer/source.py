@@ -35,7 +35,7 @@ UID=''
 
 
 def calcError(y,preds):
-    y= np.round(y,decimals=1)
+    # y= np.round(y,decimals=1)
     #return metrics.mean_squared_error(y,preds)
     return metrics.r2_score(y,preds)
 
@@ -172,12 +172,14 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
         if df.loc[idx,'dayOfWeek'] == startDoW and storeFlag == False:
             storeFlag = True
             week += 1
-        if ofUse >= STABLE_SIZE and not sentFlag:
+        # if ofUse >= STABLE_SIZE and not sentFlag:
+        if (modelMultiHistory.getLenUsedFor(modelID,existingModels)) and (modelID not in modelsSent):
             print("trying to send "+str(modelID))
             sentFlag = modelReadyToSend(modelID,targetModel,s)
         #first window of data
         if len(historyData['date'].unique()) < MAX_WINDOW:
-            if len(historyData['date'].unique())%7 == 6 and len(sourceModels)>0:
+            # if len(historyData['date'].unique())%7 == 6 and len(sourceModels)>0:
+            if len(historyData['date'].unique())>1 and (len(historyData['date'].unique())%(int(MAX_WINDOW/4)) == (int(MAX_WINDOW/4)-1)) and len(sourceModels)>0:
                 weight = modelMulti.updateInitialWeights(historyData,sourceModels,tLabel,DROP_FIELDS,weightType)
             if not sourceModels:
                 prediction = modelMulti.defaultInstancePredict(df,idx)
@@ -225,7 +227,7 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
             prediction = modelMulti.instancePredict(df,idx,sourceModels,targetModel,weights,tLabel,DROP_FIELDS,weightType)
             
             historyData = historyData.append(prediction)
-            print(historyData)
+            # print(historyData)
             p = p.append(targetPred)
             window = p.copy()
             initIDX = idx
@@ -242,7 +244,9 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
             
         #continue with repro
         else:
-            if len(historyData['date'].unique())%14 == 0 and (weightType == 'OLS' or weightType == 'OLSFE' or weightType == 'OLSFEMI'):
+            # if len(historyData['date'].unique())%14 == 0 and (weightType == 'OLS' or weightType == 'OLSFE' or weightType == 'OLSFEMI'):
+            if (len(historyData['date'].unique())%(int(MAX_WINDOW/2)) == 0 and (len(window)>0) and 
+                    (df.loc[idx,'date']!=df.loc[idx-1,'date']) and ('OLS' in weightType or weightType == 'Ridge')):
                 weights = modelMulti.calcWeights(window,sourceModels,targetModel,tLabel,DROP_FIELDS,weightType)
             #if (not (df.loc[idx,'date'] == df.loc[idx-1,'date'])) and (len(window)>0):
                 #RECALC ENSEMBLE WEIGHT?
@@ -365,17 +369,32 @@ def simTarget(weightType,s):
     # print "R2: " + str(metrics.r2_score(historyData[tLabel],historyData['predictions']))
     # print "RMSE: "+str(np.sqrt(metrics.mean_squared_error(historyData[tLabel],historyData['predictions'])))
     # print "======================"
-    if not os.path.isfile('KDDResults/'+str(weightType)+'/resultsStreams.csv'):
-        resFile = open('KDDResults/'+str(weightType)+'/resultsStreams.csv','a')
-        resFile.write('sID,R2,RMSE,Err,Pearsons,PearsonsPval,numModels,reproR2,reproRMSE,reproErr,reproPearsons,reproPearsonsPval,numModelsUsed\n')
+    if WEIGHTTYPE == 'OLS':
+        fileWeight = 'OLS'
+    elif WEIGHTTYPE == 'OLSFEMI':
+        fileWeight = str(WEIGHTTYPE)+str(MITHRESH)+"_"+str(CULLTHRESH)
+    elif WEIGHTTYPE == 'OLSCL':
+        fileWeight = 'OLSCL'
+    elif WEIGHTTYPE == 'OLSCL2':
+        fileWeight = 'OLSCL2'
+    elif WEIGHTTYPE == 'OLSPAC':
+        fileWeight = 'OLSPAC'
+    elif WEIGHTTYPE == 'OLSPAC2':
+        fileWeight = 'OLSPAC2'
+    elif WEIGHTTYPE == 'OLSKPAC':
+        fileWeight = 'OLSKPAC'
+    elif WEIGHTTYPE == 'OLSKPAC2':
+        fileWeight = 'OLSKPAC2'
     else:
-        resFile = open('KDDResults/'+str(weightType)+'/resultsStreams.csv','a')
-    # if not os.path.isfile('KDDResults/'+str(WEIGHTTYPE)+'/results'+str(NUMSTREAMS)+"streams.csv"):
-        # resFile = open('KDDResults/'+str(WEIGHTTYPE)+'/results'+str(NUMSTREAMS)+"streams.csv",'a')
-        # resFile.write('R2,RMSE,Err,numModels,reproR2,reproRMSE,reproErr,sID\n')
-    # else:
-        # resFile = open('KDDResults/'+str(WEIGHTTYPE)+'/results'+str(NUMSTREAMS)+"streams.csv",'a')
-    resFile.write(str(UID)+','+str(metrics.r2_score(historyData[tLabel],historyData['predictions']))+','+
+        fileWeight = str(WEIGHTTYPE)+str(CULLTHRESH)
+    if not os.path.isfile('Results/ParamTests/'+str(fileWeight)+'/results'+str(NUMSTREAMS)+"streams.csv"):
+        resFile = open('Results/ParamTests/'+str(fileWeight)+'/results'+str(NUMSTREAMS)+"streams.csv",'a')
+        # resFile.write('sID,R2,RMSE,Pearsons,PearsonsPval,Err,numModels,reproR2,reproRMSE,reproPearsons,reproPearsonsPval,reproErr,numModelsUsed\n')
+        resFile.write('sID,Win,Thresh,R2,RMSE,Err,Pearsons,PearsonsPval,numModels,reproR2,reproRMSE,reproErr,reproPearsons,reproPearsonsPval,numModelsUsed,totalLocalModels,totalStableLocalModels\n')
+    else:
+        resFile = open('Results/ParamTests/'+str(fileWeight)+'/results'+str(NUMSTREAMS)+"streams.csv",'a')
+    resFile.write(str(UID)+','+str(MAX_WINDOW)+','+str(THRESHOLD)+','+
+            str(metrics.r2_score(historyData[tLabel],historyData['predictions']))+','+
             str(np.sqrt(metrics.mean_squared_error(historyData[tLabel],historyData['predictions'])))+','+
             str(metrics.mean_absolute_error(historyData[tLabel],historyData['predictions']))+','+
             str(pearsonr(historyData['predictions'].values,historyData[tLabel].values)[0])+','+
@@ -386,9 +405,35 @@ def simTarget(weightType,s):
             str(metrics.mean_absolute_error(p[tLabel],p['predictions']))+',' +
             str(pearsonr(p['predictions'].values,p[tLabel].values)[0])+','+
             str(pearsonr(p['predictions'].values,p[tLabel].values)[1])+','+
-            str(meanNumModels)+'\n')
+            str(meanNumModels)+','+str(len(existingModels))+','+
+            str(len(modelMultiHistory.getStableModels(existingModels)))+'\n')
 
     resFile.close()
+
+    # if not os.path.isfile('KDDResults/'+str(weightType)+'/resultsStreams.csv'):
+        # resFile = open('KDDResults/'+str(weightType)+'/resultsStreams.csv','a')
+        # resFile.write('sID,R2,RMSE,Err,Pearsons,PearsonsPval,numModels,reproR2,reproRMSE,reproErr,reproPearsons,reproPearsonsPval,numModelsUsed\n')
+    # else:
+        # resFile = open('KDDResults/'+str(weightType)+'/resultsStreams.csv','a')
+    # # if not os.path.isfile('KDDResults/'+str(WEIGHTTYPE)+'/results'+str(NUMSTREAMS)+"streams.csv"):
+        # # resFile = open('KDDResults/'+str(WEIGHTTYPE)+'/results'+str(NUMSTREAMS)+"streams.csv",'a')
+        # # resFile.write('R2,RMSE,Err,numModels,reproR2,reproRMSE,reproErr,sID\n')
+    # # else:
+        # # resFile = open('KDDResults/'+str(WEIGHTTYPE)+'/results'+str(NUMSTREAMS)+"streams.csv",'a')
+    # resFile.write(str(UID)+','+str(metrics.r2_score(historyData[tLabel],historyData['predictions']))+','+
+            # str(np.sqrt(metrics.mean_squared_error(historyData[tLabel],historyData['predictions'])))+','+
+            # str(metrics.mean_absolute_error(historyData[tLabel],historyData['predictions']))+','+
+            # str(pearsonr(historyData['predictions'].values,historyData[tLabel].values)[0])+','+
+            # str(pearsonr(historyData['predictions'].values,historyData[tLabel].values)[1])+','+
+            # str(len(sourceModels))+','+
+            # str(metrics.r2_score(p[tLabel],p['predictions']))+','+
+            # str(np.sqrt(metrics.mean_squared_error(p[tLabel],p['predictions'])))+','+
+            # str(metrics.mean_absolute_error(p[tLabel],p['predictions']))+',' +
+            # str(pearsonr(p['predictions'].values,p[tLabel].values)[0])+','+
+            # str(pearsonr(p['predictions'].values,p[tLabel].values)[1])+','+
+            # str(meanNumModels)+'\n')
+
+    # resFile.close()
     
     return historyData,modelStart,existingModels,transitionMatrix,modelOrder,drifts,multiWeights
 
@@ -404,7 +449,12 @@ def main():
     global STABLE_SIZE
     global MAX_WINDOW
     global THRESHOLD
+    global RUNID
+    global NUMSTREAMS
+    global WEIGHTTYPE
     global UID
+    global CULLTHRESH
+    global MITHRESH
 
     HOST = 'localhost'
     ID = str(sys.argv[1])
@@ -419,7 +469,39 @@ def main():
     MAX_WINDOW = int(sys.argv[10])
     THRESHOLD = float(sys.argv[11])
     weightType = str(sys.argv[12])
-    UID = str(SIM_FROM)+'-'+str(SIM_TO)
+    RUNID = int(sys.argv[13])
+    NUMSTREAMS = int(sys.argv[14])
+    UID = str(sys.argv[15])
+    WEIGHTTYPE = weightType
+    CULLTHRESH = float(sys.argv[16])
+    MITHRESH = float(sys.argv[17])
+    # global ID
+    # global PORT
+    # global SIM_FROM
+    # global SIM_TO
+    # global FP
+    # global INIT_DAYS
+    # global MODEL_HIST_THRESHOLD_ACC
+    # global MODEL_HIST_THRESHOLD_PROB
+    # global STABLE_SIZE
+    # global MAX_WINDOW
+    # global THRESHOLD
+    # global UID
+
+    # HOST = 'localhost'
+    # ID = str(sys.argv[1])
+    # PORT = int(sys.argv[2])
+    # SIM_FROM = datetime.strptime(sys.argv[3],"%Y-%m-%d").date()
+    # SIM_TO = datetime.strptime(sys.argv[4],"%Y-%m-%d").date()
+    # FP = str(sys.argv[5])
+    # INIT_DAYS = int(sys.argv[6])
+    # MODEL_HIST_THRESHOLD_ACC = float(sys.argv[7])
+    # MODEL_HIST_THRESHOLD_PROB = float(sys.argv[8])
+    # STABLE_SIZE = int(sys.argv[9])
+    # MAX_WINDOW = int(sys.argv[10])
+    # THRESHOLD = float(sys.argv[11])
+    # weightType = str(sys.argv[12])
+    # UID = str(SIM_FROM)+'-'+str(SIM_TO)
 
     '''
     # set up connection to controller #

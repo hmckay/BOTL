@@ -1,22 +1,20 @@
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import SGDRegressor as SGD
 from sklearn.svm import SVR
 from sklearn.linear_model import LinearRegression as LR
 from sklearn.kernel_approximation import RBFSampler as RBF
 from sklearn.pipeline import Pipeline
+from sklearn.linear_model import SGDRegressor as SGD
 
 def createPipeline(df,tLabel,DROP_FIELDS):
-    #transformer = RBF(gamma = 0.001, n_components = 300, random_state=1)
-    #transformer = RBF(gamma = 0.1, n_components = 300, random_state=1)
-    #model = SGD(loss='squared_epsilon_insensitive',penalty='l2',alpha=0.001,n_iter=800,epsilon=0.001,learning_rate ='invscaling',warm_start=False,shuffle=True)
-    #model = SGD(loss='squared_epsilon_insensitive',penalty='l2',alpha=0.001,n_iter=1500,epsilon=0.001,learning_rate ='invscaling',warm_start=False,shuffle=False)
-    #components = [('transformer',transformer),('sgd',sgd)]
-    #model = Pipeline(components)
-    #model = LR()
-    model = SVR(kernel='linear',epsilon=0.001,tol=0.0001)
-    #print "model created over: "
-    #print df
+    # model = SVR(kernel='linear',tol=0.01,epsilon=0.02,C=0.10)#,C=1,class_weight='balanced')
+    # model = SVR(kernel='linear',epsilon=0.01,tol=0.001,max_iter=500,shrinking=False)
+    
+    
+    # model = SGD(loss='squared_epsilon_insensitive',penalty='l2',alpha=0.001,epsilon=0.001,learning_rate='invscaling',warm_start=False,shuffle=False,max_iter=1500,tol=0.00001)
+    # model = SVR(kernel='rbf',epsilon=0.001,gamma=0.001,C=5,tol=0.00001,max_iter=800)
+    model = SVR(kernel='linear',tol = 0.01,epsilon=0.01)#,C=5,max_iter=1500)#,max_iter=800)
+    # model = SVR(kernel='rbf',gamma = 0.01,tol = 0.05,C = 0.004,epsilon=0.2)
     X = df.drop(DROP_FIELDS,axis=1).copy()
     y = df[tLabel].copy()
     X = X.drop(tLabel,axis=1)
@@ -29,17 +27,19 @@ def initialPredict(df,model,tLabel,DROP_FIELDS):
     X = X.drop(tLabel,axis=1)
     Y = df[tLabel].copy()
     predicted = model.predict(X)
-    #df['predictions'] = np.round(predicted,decimals=3)
     df['predictions'] = predicted
     return df
 
 def instancePredict(df,idx,model,tLabel,DROP_FIELDS):
     X = df.loc[idx].drop(DROP_FIELDS).copy()
     X = X.drop(tLabel).values.reshape(1,-1)
-    Y = df.loc[idx,tLabel].copy()
-    predicted = model.predict(X)
-    #df.loc[idx,'predictions'] = np.round(predicted,decimals=3)
+    Y = df.loc[idx,tLabel]#.copy()
+    predicted = model.predict(X)[0]
+    # print("new predicted: "+str(predicted))
+    # predicted = model.predict(X)
+    # print("old predicted: "+str(predicted))
     df.loc[idx,'predictions'] = predicted
+    # print('RePro instance predict: '+str(df.loc[idx,'predictions']))
     return df.loc[idx]
 
 

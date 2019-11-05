@@ -36,6 +36,12 @@ def newHistory(acc,prob,stable,sourceModels,targetModel,startDate):
     modelOrder.append(orderDetails)
     return existingModels,transitionMatrix,1,modelOrder
 
+def getLenUsedFor(modelID,existingModels):
+    if modelID > 0:
+        return existingModels[modelID]['daysOfUse']
+    else:
+        return 0
+
 def getStableModels(existingModels):
     stable = dict((k,v) for k,v in existingModels.items() if v['daysOfUse']>=STABLE_THRESHOLD)
     #print stable

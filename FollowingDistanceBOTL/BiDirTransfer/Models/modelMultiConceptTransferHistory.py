@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.linalg import svd as SVD
 import pandas as pd
 import operator
 from . import createModel
@@ -7,12 +8,14 @@ from sklearn.linear_model import SGDRegressor as SGD
 from sklearn.kernel_approximation import RBFSampler as RBF
 from sklearn import metrics
 from scipy.linalg import norm
+from sklearn.metrics.pairwise import polynomial_kernel as kernelRBF
+# from sklearn.metrics.pairwise import rbf_kernel as kernelRBF
 
 PROB_THRESHOLD = 0
 ACC_THRESHOLD = 0
 STABLE_THRESHOLD = 0
 SOURCE_MODELS = dict()
-def newHistory(acc,prob,stable,sourceModels,targetModel,startIDX):
+def newHistory(acc,prob,stable,sourceModels,targetModel,startIDX,PCs):
     global ACC_THRESHOLD
     global PROB_THRESHOLD
     global STABLE_THRESHOLD
@@ -21,7 +24,7 @@ def newHistory(acc,prob,stable,sourceModels,targetModel,startIDX):
     PROB_THRESHOLD = prob
     STABLE_THRESHOLD = stable
     SOURCE_MODELS = sourceModels
-    modelInfo = {'targetModel':targetModel,'usedFor':0}
+    modelInfo = {'targetModel':targetModel,'usedFor':0,'PCs':PCs}
     existingModels = dict()
     existingModels[1] = modelInfo
     transitionMatrix=dict()
@@ -31,14 +34,83 @@ def newHistory(acc,prob,stable,sourceModels,targetModel,startIDX):
     modelOrder.append(orderDetails)
     return existingModels,transitionMatrix,1,modelOrder
 
+def getLenUsedFor(modelID,existingModels):
+    if modelID > 0:
+        return existingModels[modelID]['usedFor']
+    else:
+        return 0
+
 def getStableModels(existingModels):
     stable = dict((k,v) for k,v in existingModels.items() if v['usedFor']>=STABLE_THRESHOLD)
     #print stable
     return stable
 
-def addNewModel(existingModels,transitionMatrix,targetModel,prevModID,initTM):
+def getCenteredK(df):
+    # rbf_feature = RBF(gamma=1,random_state=1)
+    # x_feat = rbf_feature.fit_transform(df)
+    # kernelDF = pd.DataFrame(x_feat)
+    # kernelMatrix = kernelDF.to_numpy()
+    # print(df)
+    kernelMatrix = df.to_numpy()
+    # kernelT = kernelMatrix.transpose()
+    # kTk = np.dot(kernelT,kernelMatrix)
+    # kTk = kernel(kernelMatrix,kernelT, metric='rbf')
+    kTk = kernelRBF(kernelMatrix,kernelMatrix)
+    # print(kTk.shape)
+    N = kTk.shape[0]
+    # print(N)
+    centering = np.identity(N) - np.full(kTk.shape,(1/N))
+    centeringT = centering.transpose()
+    centeredKernel = np.dot(centering,np.dot(kTk,centeringT))
+
+    return centeredKernel
+
+
+
+
+def getPCs(df,DROP_FIELDS,k):
+    normDF = df.copy()
+    normDF = normDF.drop(DROP_FIELDS,axis=1)
+    if k:
+        xTx = getCenteredK(normDF)
+        # rbf_feature = RBF(gamma=1,random_state=1)
+        # x_feat = rbf_feature.fit_transform(normDF)
+        # normDF = pd.DataFrame(x_feat)
+    # print("normDF")
+    # print(normDF)
+    else:
+        for col in normDF.columns:
+            normDF[col] = normDF[col]-normDF[col].mean()
+            std = normDF[col].std()
+            if std != pd.np.nan and std != 0:
+                normDF[col] = normDF[col]/normDF[col].std()
+        x = normDF.to_numpy()
+        xT = x.transpose()
+        xTx = np.dot(xT,x)
+    u,sig,v = SVD(xTx)
+
+    sumDiag = 0
+    totalSumDiag = np.sum(sig)
+    numPCs = u.shape[0]
+    for i in range(0,u.shape[0]):
+        sumDiag += sig[i]
+        varCap = 1-(sumDiag/totalSumDiag)
+        # if varCap <= 0.001:
+        if varCap <= 0.01:
+            numPCs = i+1
+            break
+    # print("rbf data:")
+    # print(normDF)
+    print("principal components:")
+    print(numPCs)
+    print(u)
+    print("taking")
+    print(u[:,:numPCs])
+    return u[:,:numPCs]
+
+def addNewModel(existingModels,transitionMatrix,targetModel,prevModID,initTM,PCs):
     newID = len(existingModels)+1
-    modelInfo = {'targetModel':targetModel,'usedFor':0}
+    modelInfo = {'targetModel':targetModel,'usedFor':0,'PCs':PCs}
     existingModels[newID]= modelInfo
     transitionMatrix[newID]={}
     
@@ -123,7 +195,7 @@ def updateModelUsage(modelOrder,currentModID,existingModels,transitionMatrix,sta
     return modelOrder,existingModels,transitionMatrix, currentModID
 
 
-def nextModels(existingModels,transitionMatrix,modelOrder,DF,currentModID,tLabel,DROP_FIELDS,startIDX,initTM):
+def nextModels(existingModels,transitionMatrix,modelOrder,DF,currentModID,tLabel,DROP_FIELDS,startIDX,initTM,weightType):
     modelOrder, existingModels, transitionMatrix, currentModID = updateModelUsage(modelOrder,currentModID,existingModels,transitionMatrix,startIDX)
     df = DF.copy()
     successors = transitionMatrix.get(currentModID).copy()
@@ -134,7 +206,15 @@ def nextModels(existingModels,transitionMatrix,modelOrder,DF,currentModID,tLabel
             repeatModel = 0
             #generating new model becuase no successors
             targetModel = createModel.createPipeline(df,tLabel,DROP_FIELDS)
-            nextModel, existingModels, transitionMatrix = addNewModel(existingModels,transitionMatrix,targetModel,currentModID,initTM)
+            if 'OLSKPAC' in weightType:
+                PCs = getPCs(df,DROP_FIELDS,True)
+            elif 'OLSPAC' in weightType:
+                PCs = getPCs(df,DROP_FIELDS,False)
+            else:
+                PCs = None
+
+            nextModel, existingModels, transitionMatrix = addNewModel(existingModels,transitionMatrix,
+                    targetModel,currentModID,initTM,PCs)
         else:
             #historical-reactive
             transitionMatrix = addRepeatModel(transitionMatrix,nextModel,currentModID)
@@ -164,7 +244,15 @@ def nextModels(existingModels,transitionMatrix,modelOrder,DF,currentModID,tLabel
         #learn new concept
         repeatModel = 0
         targetModel = createModel.createPipeline(df,tLabel,DROP_FIELDS)
-        nextModel, existingModels, transitionMatrix = addNewModel(existingModels,transitionMatrix,targetModel,currentModID,initTM)
+        if 'OLSKPAC' in weightType:
+            PCs = getPCs(df,DROP_FIELDS,True)
+        elif 'OLSPAC' in weightType:
+            PCs = getPCs(df,DROP_FIELDS,False)
+        else:
+            PCs = None
+        # PCs = getPCs(df,DROP_FIELDS)
+        nextModel, existingModels, transitionMatrix = addNewModel(existingModels,transitionMatrix,
+                targetModel,currentModID,initTM,PCs)
     
 
     if repeatModel == 1:

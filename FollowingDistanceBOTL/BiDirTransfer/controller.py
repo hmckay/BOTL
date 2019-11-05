@@ -11,12 +11,12 @@ import sys
 import os
 
 MODELS = dict()
-INIT_DAYS = 80
-MODEL_HIST_THRESHOLD_PROB = 0.4
-MAX_WINDOW = 80
-STABLE_SIZE = 2* MAX_WINDOW
-MODEL_HIST_THRESHOLD_ACC = 0.5
-THRESHOLD = 0.5
+INIT_DAYS = 0#80
+MODEL_HIST_THRESHOLD_PROB = 0# 0.4
+MAX_WINDOW = 0#80
+STABLE_SIZE = 0#2* MAX_WINDOW
+MODEL_HIST_THRESHOLD_ACC = 0#0.5
+THRESHOLD = 0#0.5
 
 class myThread (threading.Thread):
     def __init__(self,threadID,info,receivedModels,runnum,nums):
@@ -139,10 +139,15 @@ def storeModel(sourceID,modelID,pickledModel):
     print(sourceID, modelID)
     MODELS[sourceID][modelID] = model
 
-    print(sourceID, MODELS[sourceID])
+    # print(sourceID, MODELS[sourceID])
 
 def initiate(threadID,name,uid,PORT,fp,inFile,outFile,sFrom,sTo,weightType,recievedModels,runID,nums,cullThresh,miThresh):
     out = open(os.devnull,'w')
+    if ('PAC' in weightType) or weightType == 'OLSPAC' or weightType == 'OLSCL2' or weightType == 'OLSCL':
+        out = open(outFile,'w')
+    else:
+        out = open(os.devnull,'w')
+
     modelsSent = []
     args = ['python3',fp,str(threadID),str(PORT),str(sFrom),str(sTo),inFile,str(INIT_DAYS),str(MODEL_HIST_THRESHOLD_ACC), 
             str(MODEL_HIST_THRESHOLD_PROB),str(STABLE_SIZE),str(MAX_WINDOW),str(THRESHOLD),str(weightType),str(runID),
@@ -196,15 +201,38 @@ def initiate(threadID,name,uid,PORT,fp,inFile,outFile,sFrom,sTo,weightType,recie
 def getFPdict():
     FPdict = {
             'D001J001': '../../FollowingDistanceData/dr001J001.csv',
-            'D001J002': '../../FollowingDistanceData/dr001J002.csv',
+            # 'D001J002': '../../FollowingDistanceData/dr001J002.csv',
             'D001J003': '../../FollowingDistanceData/dr001J003.csv',
-            'D002J001': '../../FollowingDistanceData/dr002J001.csv',
-            'D002J002': '../../FollowingDistanceData/dr002J002.csv',
-            'D002J003': '../../FollowingDistanceData/dr002J003.csv'}
+            # 'D002J001': '../../FollowingDistanceData/dr002J001.csv',
+            # 'D002J002': '../../FollowingDistanceData/dr002J002.csv',
+            # 'D002J003': '../../FollowingDistanceData/dr002J003.csv',
+            # # 'D003J001': '../../FollowingDistanceData/dr003J001.csv',
+            # 'D003J002': '../../FollowingDistanceData/dr003J002.csv',
+            'D003J005': '../../FollowingDistanceData/dr003J005.csv',
+            'D003J006': '../../FollowingDistanceData/dr003J006.csv',
+            # 'D004J001': '../../FollowingDistanceData/dr004J001.csv',
+            # # 'D004J002': '../../FollowingDistanceData/dr004J002.csv',
+            'D004J003': '../../FollowingDistanceData/dr004J003.csv',
+            # 'D004J004': '../../FollowingDistanceData/dr004J004.csv',
+            'D004J005': '../../FollowingDistanceData/dr004J005.csv',
+            'D004J006': '../../FollowingDistanceData/dr004J006.csv'}#,
+            # 'D004J007': '../../FollowingDistanceData/dr004J007.csv',
+            # # 'D004J008': '../../FollowingDistanceData/dr004J008.csv',
+            # # 'D004J016': '../../FollowingDistanceData/dr004J016.csv',
+            # # 'D004J017': '../../FollowingDistanceData/dr004J017.csv',
+            # 'D004J019': '../../FollowingDistanceData/dr004J019.csv',
+            # 'D004J020': '../../FollowingDistanceData/dr004J020.csv'}#,
+            # # 'D004J021': '../../FollowingDistanceData/dr004J021.csv'}
     return FPdict
 
 def main():
     global MODELS
+    global INIT_DAYS#80
+    global MODEL_HIST_THRESHOLD_PROB# 0.4
+    global MAX_WINDOW#80
+    global STABLE_SIZE#2* MAX_WINDOW
+    global MODEL_HIST_THRESHOLD_ACC#0.5
+    global THRESHOLD#0.5
     sourceInfo = dict()
     targetInfo = dict()
     runID = int(sys.argv[1])
@@ -213,20 +241,26 @@ def main():
     weightType = str(sys.argv[4])
     CThresh = float(sys.argv[5])
     MThresh = float(sys.argv[6])
+    MAX_WINDOW = int(sys.argv[7])#80
+    INIT_DAYS = MAX_WINDOW#80
+    STABLE_SIZE = 2* MAX_WINDOW
+    MODEL_HIST_THRESHOLD_PROB = 0.4
+    THRESHOLD = float(sys.argv[8])#0.5
+    MODEL_HIST_THRESHOLD_ACC = THRESHOLD#0.5
 
     FPdict = dict()
     FPdict = getFPdict()
 
     journeyList = list(FPdict.keys())
 
-    random.shuffle(journeyList)
+    #random.shuffle(journeyList)
     journeyList = journeyList[0:numStreams]
 
     for idx, i in enumerate(journeyList):
         source = dict()
         source['Name'] = "source"+str(idx)+":"+str(i)
         source['uid'] = str(i)
-        source['stdo']="TestResultsLog/Run"+str(runID)+"/"+str(source['Name'])+str(numStreams)+"Out.txt"
+        source['stdo']="TestResultsLog/Run"+str(runID)+"/"+str(weightType)+str(source['Name'])+str(numStreams)+"Out.txt"
         source['PORT'] = socketOffset+idx
         source['Run'] = "source.py"
         source['stdin'] = FPdict[i]

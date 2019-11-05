@@ -33,13 +33,15 @@ def calcR2Weights(df,sourceModels,targetModel,tLabel,DROP_FIELDS):
     sourceR2 = dict()
     totalR2 = 0
     for k,v in sourceModels.items():
-        sourceP[k] = np.round(sourceModels[k].predict(X),decimals=1)
+        # sourceP[k] = np.round(sourceModels[k].predict(X),decimals=1)
+        sourceP[k] = sourceModels[k].predict(X)
         sourceR2[k] = metrics.r2_score(Y,sourceP[k])
         if sourceR2[k] <= 0:
             sourceR2[k] = 0.00000000000001
         totalR2 += sourceR2[k]
             
-    targetP = np.round(targetModel.predict(X),decimals=1)
+    # targetP = np.round(targetModel.predict(X),decimals=1)
+    targetP = targetModel.predict(X)
     targetR2 = metrics.r2_score(Y,targetP)
     if targetR2 <= 0: 
         targetR2 = 0.00000000000001
@@ -56,9 +58,11 @@ def calcOLSWeights(df,sourceModels,targetModel,tLabel,DROP_FIELDS):
     metaX = pd.DataFrame(columns = list(sourceModels.keys()))
     #print X
     for k,v in sourceModels.items():
-        pred = np.round(sourceModels[k].predict(X),decimals=1)
+        # pred = np.round(sourceModels[k].predict(X),decimals=1)
+        pred = sourceModels[k].predict(X)
         metaX[k] = pred
-    metaX['target'] = np.round(targetModel.predict(X),decimals=1)
+    # metaX['target'] = np.round(targetModel.predict(X),decimals=1)
+    metaX['target'] = targetModel.predict(X)
     metaModel = OLS()
     metaModel.fit(metaX,Y)
     #print model.coef_
@@ -82,12 +86,14 @@ def calcOLSFEWeights(df,sourceModels,targetModel,tLabel,DROP_FIELDS):
     dropKeys = []
     #print X
     for k,v in sourceModels.items():
-        pred = np.round(sourceModels[k].predict(X),decimals=1)
+        # pred = np.round(sourceModels[k].predict(X),decimals=1)
+        pred = sourceModels[k].predict(X)
         metaX[k] = pred
         r2 = metrics.r2_score(Y,pred)
         if r2 <= 0:
             dropKeys.append(k)
-    metaX['target'] = np.round(targetModel.predict(X),decimals=1)
+    # metaX['target'] = np.round(targetModel.predict(X),decimals=1)
+    metaX['target'] = targetModel.predict(X)
     
     if len(dropKeys) >0:
         metaX = metaX.drop(dropKeys,axis=1)
@@ -117,12 +123,14 @@ def calcOLSFEMIWeights(df,sourceModels,targetModel,tLabel,DROP_FIELDS):
     dropKeys = []
     #print X
     for k,v in sourceModels.items():
-        pred = np.round(sourceModels[k].predict(X),decimals=1)
+        # pred = np.round(sourceModels[k].predict(X),decimals=1)
+        pred = sourceModels[k].predict(X)
         metaX[k] = pred
         r2 = metrics.r2_score(Y,pred)
         if r2 <= CULLTHRESH:
             dropKeys.append(k)
-    metaX['target'] = np.round(targetModel.predict(X),decimals=1)
+    # metaX['target'] = np.round(targetModel.predict(X),decimals=1)
+    metaX['target'] = targetModel.predict(X)
     
     for k,v in sourceModels.items():
         if k in dropKeys:
@@ -130,8 +138,10 @@ def calcOLSFEMIWeights(df,sourceModels,targetModel,tLabel,DROP_FIELDS):
         for l,u in sourceModels.items():
             if (l in dropKeys) or l==k:
                 continue
-            predA = np.round(sourceModels[k].predict(X),decimals=1)
-            predB = np.round(sourceModels[l].predict(X),decimals=1)
+            # predA = np.round(sourceModels[k].predict(X),decimals=1)
+            predA = sourceModels[k].predict(X)
+            # predB = np.round(sourceModels[l].predict(X),decimals=1)
+            predB = sourceModels[l].predict(X)
             combinedpredA = np.stack((predA,np.ones(len(predA)))).T
             mi = mutual_info_regression(combinedpredA,predB)[0]
             if mi > MITHRESH:
@@ -183,7 +193,8 @@ def updateInitialR2Weights(df,sourceModels,tLabel,DROP_FIELDS):
     sourceP = dict()
     sourceR2 = dict()
     for k,v in sourceModels.items():
-        sourceP[k] = np.round(sourceModels[k].predict(X),decimals=1)
+        # sourceP[k] = np.round(sourceModels[k].predict(X),decimals=1)
+        sourceP[k] = sourceModels[k].predict(X)
         sourceR2[k] = metrics.r2_score(Y,sourceP[k])
         if sourceR2[k] <= 0:
             sourceR2[k] = 0.00000000000001
@@ -196,7 +207,8 @@ def updateInitialOLSWeights(df,sourceModels,tLabel,DROP_FIELDS):
     metaX = pd.DataFrame(columns = list(sourceModels.keys()))
     #print X
     for k,v in sourceModels.items():
-        pred = np.round(sourceModels[k].predict(X),decimals=1)
+        # pred = np.round(sourceModels[k].predict(X),decimals=1)
+        pred = sourceModels[k].predict(X)
         metaX[k] = pred
     #print metaX
     metaModel = OLS()
@@ -220,7 +232,8 @@ def updateInitialOLSFEWeights(df,sourceModels,tLabel,DROP_FIELDS):
     dropKeys = dict()
     for k,v in sourceModels.items():
         #pred = np.round(sourceModels[k].predict(X),decimals=3)
-        pred = np.round(sourceModels[k].predict(X),decimals=1)
+        # pred = np.round(sourceModels[k].predict(X),decimals=1)
+        pred = sourceModels[k].predict(X)
         metaX[k] = pred
         r2 = metrics.r2_score(Y,pred)
         if r2 <= 0:
@@ -257,7 +270,8 @@ def updateInitialOLSFEMIWeights(df,sourceModels,tLabel,DROP_FIELDS):
     dropKeys = dict()
     for k,v in sourceModels.items():
         #pred = np.round(sourceModels[k].predict(X),decimals=3)
-        pred = np.round(sourceModels[k].predict(X),decimals=1)
+        # pred = np.round(sourceModels[k].predict(X),decimals=1)
+        pred = sourceModels[k].predict(X)
         metaX[k] = pred
         r2 = metrics.r2_score(Y,pred)
         if r2 <= CULLTHRESH:
@@ -269,8 +283,10 @@ def updateInitialOLSFEMIWeights(df,sourceModels,tLabel,DROP_FIELDS):
         for l,u in sourceModels.items():
             if (l in list(dropKeys.keys())) or l==k:
                 continue
-            predA = np.round(sourceModels[k].predict(X),decimals=1)
-            predB = np.round(sourceModels[l].predict(X),decimals=1)
+            # predA = np.round(sourceModels[k].predict(X),decimals=1)
+            # predB = np.round(sourceModels[l].predict(X),decimals=1)
+            predA = sourceModels[k].predict(X)
+            predB = sourceModels[l].predict(X)
             combinedpredA = np.stack((predA,np.ones(len(predA)))).T
             mi = mutual_info_regression(combinedpredA,predB)[0]
             if mi > MITHRESH:
@@ -317,7 +333,8 @@ def instancePredict(df,idx,sourceModels,targetModel,weights,tLabel,DROP_FIELDS,w
     if weightType == 'OLS' or weightType =='OLSFE' or weightType == 'OLSFEMI':
         metaX = pd.DataFrame(columns=weights['metaXColumns'])
     for k,v in sourceModels.items():
-        sourceP = np.round(sourceModels[k].predict(X),decimals=1)
+        # sourceP = np.round(sourceModels[k].predict(X),decimals=1)
+        sourceP = sourceModels[k].predict(X)
         if weightType == 'OLS' or weightType == 'OLSFE' or weightType == 'OLSFEMI':
             if k in metaX.columns:
                 metaX[k] = sourceP
@@ -325,7 +342,8 @@ def instancePredict(df,idx,sourceModels,targetModel,weights,tLabel,DROP_FIELDS,w
             weight = weights['sourceR2s'][k]/weights['totalR2']
             combo += weight*sourceP
 
-    targetP = np.round(targetModel.predict(X),decimals=1)
+    # targetP = np.round(targetModel.predict(X),decimals=1)
+    targetP = targetModel.predict(X)
     if weightType == 'OLS' or weightType =='OLSFE' or weightType == 'OLSFEMI':
         metaX['target'] = targetP
         metaModel = weights['metaModel']
@@ -333,7 +351,8 @@ def instancePredict(df,idx,sourceModels,targetModel,weights,tLabel,DROP_FIELDS,w
     else:
         combo += (weights['targetR2']/weights['totalR2'])*targetP
     
-    combo = np.round(combo,decimals=1)
+    # combo = np.round(combo,decimals=1)
+    # combo = np.round(combo,decimals=1)
     df.loc[idx,'predictions'] = combo
     
     return df.loc[idx]
@@ -357,7 +376,7 @@ def initialInstancePredict(df,idx,sourceModels,weights,tLabel,DROP_FIELDS,weight
         if 'metaXColumns' not in weights:
             historyData = df.loc[:idx].copy()
             historyData = historyData.drop(idx,axis=0)
-            if len(historyData)<10:
+            if len(historyData)<4:
                 weightType = 'Even'
                 weights = getEvenWeights(historyData,sourceModels,tLabel,DROP_FIELDS)
             else:
@@ -366,9 +385,9 @@ def initialInstancePredict(df,idx,sourceModels,weights,tLabel,DROP_FIELDS,weight
         if not weightType =='Even':
             metaX = pd.DataFrame(columns=weights['metaXColumns'])
     for k,v in sourceModels.items():
-        sourceP = np.round(sourceModels[k].predict(X),decimals=1)
+        # sourceP = np.round(sourceModels[k].predict(X),decimals=1)
+        sourceP = sourceModels[k].predict(X)
         if weightType == 'OLS' or weightType == 'OLSFE' or weightType == 'OLSFEMI':
-            print("index is : "+str(idx))
             if k in metaX.columns:
                 metaX[k] = sourceP
         else:
@@ -381,7 +400,7 @@ def initialInstancePredict(df,idx,sourceModels,weights,tLabel,DROP_FIELDS,weight
         #print metaX
         metaModel = weights['metaModel']
         combo = metaModel.predict(metaX)
-    combo = np.round(combo,decimals=1)
+    # combo = np.round(combo,decimals=1)
     
     df.loc[idx,'predictions'] = combo
     return df.loc[idx]

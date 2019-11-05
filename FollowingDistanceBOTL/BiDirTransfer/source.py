@@ -120,7 +120,7 @@ def storeSourceModel(sourceModID,pickledModel,sourceModels):
     print("picked model len is: "+str(len(pickledModel)))
     model = pickle.loads(pickledModel)
     sourceModels[sourceModID] = model
-    print(model)
+    print(model['model'])
     return sourceModels
 
 
@@ -155,7 +155,8 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
     window = pd.DataFrame(columns = df.columns)
     historyData = pd.DataFrame(columns = df.columns)
     startIDX = df.index.min()+INIT_DAYS+1
-    startDoW = df.index.min()%20
+    # startDoW = df.index.min()%20
+    startDoW = df.index.min()%INIT_DAYS
 
     modelStart = []
     modelStart.append(startIDX)
@@ -163,13 +164,25 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
 
     for idx in df.index:
         conceptSize+=1
-        if idx%75 == startDoW and storeFlag == False:
+        if idx%INIT_DAYS == startDoW and storeFlag == False:
             storeFlag = True
             week += 1
         
-        if ofUse >= STABLE_SIZE and not sentFlag:
+        # if ofUse >= STABLE_SIZE and not sentFlag:
+        # if (modelMultiHistory.getLenUsedFor(modelID,existingModels)) and (modelID not in modelsSent):
+        if (ofUse + modelMultiHistory.getLenUsedFor(modelID,existingModels)) >= STABLE_SIZE and (modelID not in modelsSent):
             print("trying to send "+str(modelID))
-            sentFlag = modelReadyToSend(modelID,targetModel,s)
+            if 'OLSKPAC' in weightType:
+                # PCs = modelMultiHistory.getPCs(historyData[(-1*STABLE_SIZE):],DROP_FIELDS,True)
+                PCs = modelMultiHistory.getPCs(historyData[(-1*MAX_WINDOW):],DROP_FIELDS,True)
+            elif 'OLSPAC' in weightType:
+                # PCs = modelMultiHistory.getPCs(historyData[(-1*STABLE_SIZE):],DROP_FIELDS,False)
+                PCs = modelMultiHistory.getPCs(historyData[(-1*MAX_WINDOW):],DROP_FIELDS,False)
+            else:
+                PCs = None
+            existingModels[modelID]['PCs'] = PCs
+            modelInfo = {'model':targetModel,'PCs':PCs}
+            sentFlag = modelReadyToSend(modelID,modelInfo,s)
         
         #first window of data
         if len(historyData) < MAX_WINDOW:
@@ -186,7 +199,8 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
                 targetPred = modelMulti.defaultInstancePredict(df,idx)
             historyData = historyData.append(prediction)
             p = p.append(targetPred)
-            if weightType == 'OLSFE' or weightType =='OLS' or weightType == 'OLSFEMI':
+            # if weightType == 'OLSFE' or weightType =='OLS' or weightType == 'OLSFEMI' or weightType == 'OLSCL':
+            if 'OLS' in weightType:
                 if not sourceModels:
                     numModels = 0
                 else:
@@ -206,8 +220,9 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
             #    # resultFile.close()
         #one window of data received
         elif (len(historyData) == MAX_WINDOW) and not buildTMod:
-            if (weightType != 'OLS' and weightType != 'OLSFE' and weightType != 'Ridge' and 
-                    weightType != 'NNLS' and weightType != 'OLSFEMI'):
+            # if (weightType != 'OLS' and weightType != 'OLSFE' and weightType != 'Ridge' and 
+                    # weightType != 'NNLS' and weightType != 'OLSFEMI' and weightType != 'OLSCL'):
+            if ('OLS' not in weightType and weightType != 'Ridge' and weightType != 'NNLS'):
                 weights['sourceR2s']=weight
                 weights['totalR2']=sum(weight.values())
             else: 
@@ -219,10 +234,18 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
             #receive models from controller
             sourceModels = readyToReceive(s,sourceModels)
             targetModel = createModel.createPipeline(historyData,tLabel,DROP_FIELDS)
+            PCs = None
+            if 'OLSKPAC' in weightType:
+                PCs = modelMultiHistory.getPCs(historyData,DROP_FIELDS,True)
+            elif 'OLSPAC' in weightType:
+                PCs = modelMultiHistory.getPCs(historyData,DROP_FIELDS,False)
+            else:
+                PCs = None
 
             weights = modelMulti.calcWeights(historyData,sourceModels,targetModel,tLabel,
-                    DROP_FIELDS,weightType,CULLTHRESH,MITHRESH)
-            if weightType == 'OLSFE' or weightType =='OLS' or weightType == 'OLSFEMI':
+                    DROP_FIELDS,weightType,CULLTHRESH,MITHRESH,None,None,PCs)
+            # if weightType == 'OLSFE' or weightType =='OLS' or weightType == 'OLSFEMI' or weightType == 'OLSCL':
+            if 'OLS' in weightType:
                 modelWeights = weights['sourceR2s']
                 numModels = sum(1 for val in list(modelWeights.values()) if val != 0)
                 numModelsUsed.append(numModels)
@@ -235,7 +258,8 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
             #    # resultFile.close()
             print("first prediction with target model: "+str(idx))
             targetPred = createModel.instancePredict(df,idx,targetModel,tLabel,DROP_FIELDS)
-            prediction = modelMulti.instancePredict(df,idx,sourceModels,targetModel,weights,tLabel,DROP_FIELDS,weightType)
+            prediction = modelMulti.instancePredict(df,idx,sourceModels,targetModel,weights,tLabel,DROP_FIELDS,weightType,None,None,PCs)
+            ofUse+=1
             
             historyData = historyData.append(prediction)
             p = p.append(targetPred)
@@ -246,18 +270,29 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
 
             ##########CREATE NEW HISTORY FOR ENSEMBLE WEIGHTS
             existingModels,transitionMatrix,modelID,modelOrder = modelMultiHistory.newHistory(MODEL_HIST_THRESHOLD_ACC,
-                    MODEL_HIST_THRESHOLD_PROB,STABLE_SIZE,sourceModels,targetModel,startIDX)
+                    MODEL_HIST_THRESHOLD_PROB,STABLE_SIZE,sourceModels,targetModel,startIDX,PCs)
             drifts[modelCount] = week
             modelCount = 1
             
         #continue with repro
         else:
-            if idx%25 == 0 and (weightType == 'OLS' or weightType == 'OLSFE' or 
-                    weightType == 'OLSFEMI' or weightType == 'Ridge'):
+            if weightType == 'OLSCL2' or 'OLSPAC' in weightType or 'OLSKPAC' in weightType:
+                stableLocals = modelMultiHistory.getStableModels(existingModels)
+            else:
+                stableLocals = None
+            if 'OLSPAC' in weightType or 'OLSKPAC' in weightType:
+                PCs = existingModels[modelID]['PCs']
+            else:
+                PCs = None
+            # if idx%25 == 0 and (weightType == 'OLS' or weightType == 'OLSFE' or 
+                    # weightType == 'OLSFEMI' or weightType == 'Ridge' or weightType == 'OLSCL'):
+            if idx%(int(MAX_WINDOW/2)) == 0 and ('OLS' in weightType or weightType == 'Ridge'):
+                # stableLocals = modelMultiHistory.getStableModels(existingModels)
                 weights = modelMulti.calcWeights(historyData[(-1*STABLE_SIZE):],sourceModels,
-                        targetModel,tLabel,DROP_FIELDS,weightType,CULLTHRESH,MITHRESH)
+                        targetModel,tLabel,DROP_FIELDS,weightType,CULLTHRESH,MITHRESH,stableLocals,modelID,PCs)
             ofUse += 1
-            if weightType == 'OLSFE' or weightType =='OLS' or weightType == 'OLSFEMI':
+            # if weightType == 'OLSFE' or weightType =='OLS' or weightType == 'OLSFEMI' or weightType == 'OLSCL':
+            if 'OLS' in weightType:
                 modelWeights = weights['sourceR2s']
                 numModels = sum(1 for val in list(modelWeights.values()) if val != 0)
                 numModelsUsed.append(numModels)
@@ -272,7 +307,8 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
             #    # numModels = sum(1 for val in modelWeights.values() if val != 0)
             #    # resultFile.write(str(idx)+','+str(wErr)+','+str(numModels+1)+'\n')
             #    # resultFile.close()
-            prediction = modelMulti.instancePredict(df,idx,sourceModels,targetModel,weights,tLabel,DROP_FIELDS,weightType)
+            prediction = modelMulti.instancePredict(df,idx,sourceModels,targetModel,weights,tLabel,DROP_FIELDS,
+                    weightType,stableLocals,modelID,PCs)
             historyData = historyData.append(prediction)
             targetPred = createModel.instancePredict(df,idx,targetModel,tLabel,DROP_FIELDS)
             p = p.append(targetPred) 
@@ -304,13 +340,14 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
                         '''
                         #CALC ENSEMBLE WEIGHT
                         sourceModels=readyToReceive(s,sourceModels)
-                        modelID, existingModels,transitionMatrix,modelOrder,targetModel = modelMultiHistory.nextModels(existingModels,transitionMatrix, 
-                                modelOrder,partial,modelID,tLabel,DROP_FIELDS,startIDX,False)
+                        modelID, existingModels,transitionMatrix,modelOrder,targetModel = modelMultiHistory.nextModels(existingModels,
+                                transitionMatrix,modelOrder,partial,modelID,tLabel,DROP_FIELDS,startIDX,False,weightType)
                         # send to controller
                         ofUse = 0
                         sentFlag = 0
+                        # stableLocals = modelMultiHistory.getStableModels(existingModels)
                         weights = modelMulti.calcWeights(window,sourceModels,targetModel,tLabel,
-                                DROP_FIELDS,weightType,CULLTHRESH,MITHRESH)
+                                DROP_FIELDS,weightType,CULLTHRESH,MITHRESH,stableLocals,modelID,existingModels[modelID]['PCs'])
                         window = createModel.initialPredict(window,targetModel,tLabel,DROP_FIELDS)
                         if lastModID < modelID:
                             drifts[modelCount] = week
@@ -326,7 +363,8 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
                     top = window.loc[window.index.min()]
                     diffTop = abs(top['predictions']-top[tLabel])
 
-        if idx%75 == (startDoW-1) and storeFlag == True:
+        # if idx%75 == (startDoW-1) and storeFlag == True:
+        if idx%(int(MAX_WINDOW/2)) == (startDoW-1) and storeFlag == True:
             storeFlag = False
             w = dict()
             for k in weights['sourceR2s']:
@@ -337,7 +375,7 @@ def runRePro(df,sourceModels,tLabel,weightType,s):
     print("number concepts: "+str(modelCount))
     print(modelStart)
     print(modelOrder)
-    print(existingModels)
+    # print(existingModels)
     print(transitionMatrix)
     mse = metrics.mean_squared_error(historyData[tLabel],historyData['predictions'])
     print(mse)
@@ -378,14 +416,28 @@ def simTarget(weightType,s):
         fileWeight = 'OLS'
     elif WEIGHTTYPE == 'OLSFEMI':
         fileWeight = str(WEIGHTTYPE)+str(MITHRESH)+"_"+str(CULLTHRESH)
+    elif WEIGHTTYPE == 'OLSCL':
+        fileWeight = 'OLSCL'
+    elif WEIGHTTYPE == 'OLSCL2':
+        fileWeight = 'OLSCL2'
+    elif WEIGHTTYPE == 'OLSPAC':
+        fileWeight = 'OLSPAC'
+    elif WEIGHTTYPE == 'OLSPAC2':
+        fileWeight = 'OLSPAC2'
+    elif WEIGHTTYPE == 'OLSKPAC':
+        fileWeight = 'OLSKPAC'
+    elif WEIGHTTYPE == 'OLSKPAC2':
+        fileWeight = 'OLSKPAC2'
     else:
         fileWeight = str(WEIGHTTYPE)+str(CULLTHRESH)
-    if not os.path.isfile('Results/SixStreams/'+str(fileWeight)+'/results'+str(NUMSTREAMS)+"streams.csv"):
-        resFile = open('Results/SixStreams/'+str(fileWeight)+'/results'+str(NUMSTREAMS)+"streams.csv",'a')
-        resFile.write('sID,R2,RMSE,Pearsons,PearsonsPval,Err,numModels,reproR2,reproRMSE,reproPearsons,reproPearsonsPval,reproErr,numModelsUsed\n')
+    if not os.path.isfile('Results/ParamTests/'+str(fileWeight)+'/results'+str(NUMSTREAMS)+"streams.csv"):
+        resFile = open('Results/ParamTests/'+str(fileWeight)+'/results'+str(NUMSTREAMS)+"streams.csv",'a')
+        # resFile.write('sID,R2,RMSE,Pearsons,PearsonsPval,Err,numModels,reproR2,reproRMSE,reproPearsons,reproPearsonsPval,reproErr,numModelsUsed\n')
+        resFile.write('sID,Win,Thresh,R2,RMSE,Err,Pearsons,PearsonsPval,numModels,reproR2,reproRMSE,reproErr,reproPearsons,reproPearsonsPval,numModelsUsed,totalLocalModels,totalStableLocalModels\n')
     else:
-        resFile = open('Results/SixStreams/'+str(fileWeight)+'/results'+str(NUMSTREAMS)+"streams.csv",'a')
-    resFile.write(str(UID)+','+str(metrics.r2_score(historyData[tLabel],historyData['predictions']))+','+
+        resFile = open('Results/ParamTests/'+str(fileWeight)+'/results'+str(NUMSTREAMS)+"streams.csv",'a')
+    resFile.write(str(UID)+','+str(MAX_WINDOW)+','+str(THRESHOLD)+','+
+            str(metrics.r2_score(historyData[tLabel],historyData['predictions']))+','+
             str(np.sqrt(metrics.mean_squared_error(historyData[tLabel],historyData['predictions'])))+','+
             str(metrics.mean_absolute_error(historyData[tLabel],historyData['predictions']))+','+
             str(pearsonr(historyData['predictions'].values,historyData[tLabel].values)[0])+','+
@@ -396,7 +448,8 @@ def simTarget(weightType,s):
             str(metrics.mean_absolute_error(p[tLabel],p['predictions']))+',' +
             str(pearsonr(p['predictions'].values,p[tLabel].values)[0])+','+
             str(pearsonr(p['predictions'].values,p[tLabel].values)[1])+','+
-            str(meanNumModels)+'\n')
+            str(meanNumModels)+','+str(len(existingModels))+','+
+            str(len(modelMultiHistory.getStableModels(existingModels)))+'\n')
 
     resFile.close()
 
