@@ -29,10 +29,10 @@ AWPro implementations are in:
 
 Common files within each of these sub-folders include:
 * *`controller.py`*: manages the creation of domains in the framework and is used to transfer models between domains (sources).
-* *`source.py`*: a source domains. Uses one of the underlying concept drift detection strategies to detect concept drifts that occur locally to a domain.
+* *`source.py`*: a source domain. Uses one of the underlying concept drift detection strategies to detect concept drifts that occur locally to a domain.
 * *`Models/createModel.py`*: used to create local models and make predictions without knowledge transfer. Predictions without knowledge transfer are used to detect concept drifts
-* *`Models/modelMultiConceptTransfer.py`*: used to make overarching predictions by combining locally learnt models with models transferred from other domains (more detail below)
-* *`Models/modelMultiConceptTransferHistory.py`*: used BOTL to keep track of source models and to identify when a model is considered stable (therefore can be transferred to other domains). Also used by BOTL implementation with RePro and AWPro as underlying drift detectors to keep track of historical models and concept transitions. Allows previously learnt models to be prioritised over creating new models
+* *`Models/modelMultiConceptTransfer.py`*: used to make overarching predictions by combining the locally learnt model with models transferred from other domains (more detail below)
+* *`Models/modelMultiConceptTransferHistory.py`*: used by BOTL to keep track of source models and to identify when a model is considered stable (therefore can be transferred to other domains). Also used by BOTL implementation with RePro and AWPro as underlying drift detectors to keep track of historical models and concept transitions. Allows previously learnt models to be prioritised over creating new models
 
 # BOTL with Culling (BOTL-C)
 Two BOTL-C variants are included in this repository: BOTL-C.I (model culling based on performance), and BOTL-C.II (model culling based on performance and diversity). Each of these are implemented in `Models/modelMultiConceptTransfer.py`. BOTL-C.I implementations are used when the parameter `weightType = 'OLSFE'`, and BOTL-C.II implementations are used when the parameter `weightType = 'OLSFEMI'`. In order to use these two implementations, additional parameters are needed, which are set in `controller.py` as follows:
