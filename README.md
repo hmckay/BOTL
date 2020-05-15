@@ -24,7 +24,7 @@ RePro implementations are situated in:
 ADWIN implementations are in:
 `datasetBOTL/BirDirTransfer/ADWIN/`
 AWPro implementations are in:
-`datasetBOTL/BiDirTransfer/ADPro/`
+`datasetBOTL/BiDirTransfer/AWPro/`
 
 
 Common files within each of these sub-folders include:
