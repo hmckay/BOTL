@@ -1,3 +1,8 @@
+############################################################################
+# Code for BOTL controller. This manages the source domains, and transfers 
+# models between them. This implementation uses ADWIN as the underlying 
+# drift detector.
+############################################################################
 import numpy as np
 import subprocess
 import socket

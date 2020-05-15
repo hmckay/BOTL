@@ -1,4 +1,7 @@
-
+############################################################################
+# This is the main script used by each domain. Drifts are detected from 
+# this file, models are managed, and transferred to the controller
+############################################################################
 import sys
 import numpy as np
 import pandas as pd
