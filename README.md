@@ -12,6 +12,7 @@ Use `python3 runResults.py --help` to display run options
   - `--domain` type of dataset used: `Following, Heating, Sudden, Gradual`
   - `--type` concept drift detection strategy: `RePro`, `ADWIN` and `AWPro` have been implemented
   - `--window` window size of the concept drift detector
+  - `--ReProAcc`, `--ReProProb` and `--ADWINDelta` parameters required by RePro, ADWIN and AWPro
   - `--runid` used when debugging (change output in `controller2.py` to somethign other than dev/null)
   - `--numStreams` number of domains in the framework
   - `--ensemble` version of BOTL/how models are combined - see below for options
@@ -20,7 +21,7 @@ Use `python3 runResults.py --help` to display run options
   - `--paCull` Pricipal Angle/conceptual similarity culling threshold parameter used by CS-Thresh
   - `--variance` total variance captured by the PCs used to represent base models, used by CS-Thresh and CS-Clust
   - `--learner` list of types of models to be used, so far SVRs and RRs can be used
-  - `--replacement` is model replacement it to be used when determining whether to transfer
+  <!--- `--replacement` is model replacement it to be used when determining whether to transfer-->
 
 ## BOTL variants
 Different variants of BOTL have been implemented and are specified by the `--ensemble` parameter
