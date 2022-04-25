@@ -25,7 +25,7 @@ Use `python3 runResults.py --help` to display run options
 ## BOTL variants
 Different variants of BOTL have been implemented and are specified by the `--ensemble` parameter
   - BOTL: `--ensemble OLS` 
-   - BOTL with no base model selection
+    - BOTL with no base model selection
   -
 
 
