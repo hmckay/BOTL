@@ -24,10 +24,30 @@ Use `python3 runResults.py --help` to display run options
 
 ## BOTL variants
 Different variants of BOTL have been implemented and are specified by the `--ensemble` parameter
-  - BOTL: `--ensemble OLS` 
+  - BOTL: 
+    - `--ensemble OLS` 
     - BOTL with no base model selection
-  -
-
+    - introduced in [[1]](#1), used in [[2]](#2) and [[3]](#3)
+  - P-Thresh:
+    - `--ensemble OLSFE`
+    - use `--perfCull` to set predictive performance culling threshold parameter
+    - BOTL with predictive performance thresholding to select base models
+    - introduced in [[1]](#1) as BOTL-C.I, used in [[2]](#2) and [[3]](#3)
+  - MI-Thresh:
+    - `--ensemble OLSFEMI`
+    - use `--miCull` to set mutual information culling threshold parameter
+    - BOTL with mutual information and predictive performance thresholding to select base models
+    - introduced in [[1]](#1) as BOTL-C.II, used in [[2]](#2) and [[3]](#3)
+  - CS-Thresh:
+    - `--ensemble OLSFEPA`
+    - use `--paCull` to set conceptual similarity culling threshold parameter
+    - BOTL with conceptual similarity and predictive performance thresholding to select base models
+    - introduced in [[3]](#3)
+  - CS-Clust:
+    - `--ensemble OLSKPAC2`
+    - use `--variance` to determine how much variance is captured within the PCs that represent the uderlying concept
+    - BOTL with parameterless conceptual clustering to select base models
+    - introduced in [[3]](#3), uses STSC [[4]](#4) to create clusters of similar models
 
 
 ## Available data and data generators and BOTL implementations:
@@ -38,28 +58,11 @@ Different variants of BOTL have been implemented and are specified by the `--ens
 Note the underlying framework is the same for all three implementations. For ease of reproducibility all three versions have been added.
 
 ## AWPro
-AWPro is a concept drift detection algorithm that combines aspects of ADWIN and RePro that better suit the BOTL framework.
+AWPro is a concept drift detection algorithm that combines aspects of RePro [[5]](#5) and ADWIN [[6]](#6) that better suit the BOTL framework. AWPro was first introduced in [[2]](#2).
 
 ## Parameter Analysis
 Parameter analysis has been done to consider (see `parameterAnalysis.pdf`) to impact of the parameter values of underlying concept drift detection strategies, and how they impact the BOTL framework. 
 
-
-# File structure
-The BOTL framework is available for Hyperplane, Heating and FollowingDistance datasets (see `reproducibility.pdf` for more information of these datasets).
-BOTL has been implemented using three underlying concept drift detection algorithms: RePro, ADWIN and our own drift detector, AWPro. 
-
-
-
-* *`controller2.py`*: manages the creation of domains in the framework and is used to transfer models between domains (sources).
-* *`sourceXXXX2.py`*: a source domain using the underlying CDD XXXX (i.e. RePro, ADWIN or AWPro').
-* *`Models/createModel.py`*: used to create local models and make predictions without knowledge transfer. Predictions without knowledge transfer are used to detect concept drifts
-* *`Models/modelMultiConceptTransfer.py`*: used to make overarching predictions by combining the locally learnt model with models transferred from other domains (more detail below)
-* *`Models/modelMultiConceptTransferHistory.py`*: used by BOTL to keep track of source models and to identify when a model is considered stable (therefore can be transferred to other domains). Also used by BOTL implementation with RePro and AWPro as underlying drift detectors to keep track of historical models and concept transitions. Allows previously learnt models to be prioritised over creating new models
-
-<!--# BOTL with Culling (BOTL-C)-->
-<!--Two BOTL-C variants are included in this repository: BOTL-C.I (model culling based on performance), and BOTL-C.II (model culling based on performance and diversity). Each of these are implemented in `Models/modelMultiConceptTransfer.py`. BOTL-C.I implementations are used when the parameter `weightType = 'OLSFE'`, and BOTL-C.II implementations are used when the parameter `weightType = 'OLSFEMI'`. In order to use these two implementations, additional parameters are needed, which are set in `controller.py` as follows:-->
-<!--- *Performance threshold*: this was the original culling parameter, and therefore is denoted by parameter `CThresh` in `controller.py`-->
-<!--- *Mutual Information threshold*: this parameter is denoted by `MThresh` in `controller.py`-->
 
 
 # Source Code
@@ -68,3 +71,21 @@ The BOTL framework has been created using various code from other sources. ADWIN
 Other work relating to future variations of BOTL use Self-Tuning Spectral Clustering has been created based on the implementation available: https://github.com/wOOL/STSC. This code is used in `datasetBOTL/BiDirTransfer/Models/stsc*.py`
 
 
+# References
+<a id="1">[1]</a> 
+McKay, H., Griffiths, N., Taylor, P., Damoulas, T. and Xu, Z., 2019. Online Transfer Learning for Concept Drifting Data Streams. In BigMine@ KDD.
+
+<a id="2">[2]</a>
+McKay, H., Griffiths, N., Taylor, P., Damoulas, T. and Xu, Z., 2020. Bi-directional online transfer learning: a framework. Annals of Telecommunications, 75(9), pp.523-547.
+
+<a id="3">[3]</a>
+McKay, H., Griffiths, N. and Taylor, P., 2021. Conceptually Diverse Base Model Selection for Meta-Learners in Concept Drifting Data Streams. arXiv preprint arXiv:2111.14520.
+
+<a id="4">[4]</a>
+Zelnik, M.L. and Perona, P., 2015. Self-tuning spectral clustering. Advances in Neural Information Processing Systems, pp.1601-1608.
+
+<a id="5">[5]</a>
+Yang, Y., Wu, X. and Zhu, X., 2005, August. Combining proactive and reactive predictions for data streams. In Proceedings of the eleventh ACM SIGKDD international conference on Knowledge discovery in data mining (pp. 710-715).
+
+<a id="6">[6]</a>
+Bifet, A. and Gavalda, R., 2007, April. Learning from time-changing data with adaptive windowing. In Proceedings of the 2007 SIAM international conference on data mining (pp. 443-448). Society for Industrial and Applied Mathematics.
